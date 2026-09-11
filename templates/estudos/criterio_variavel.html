@@ -1,0 +1,40 @@
+{% extends "painel.html" %}
+{% load static %}
+{% block title %}Escolher variável | UniData{% endblock %}
+{% block content %}
+<div class="painel-cabecalho">
+    <div>
+        <p class="painel-rotulo">{{ estudo.nome }}</p>
+        <h1 class="painel-titulo">Escolher variável</h1>
+        <p class="painel-abertura">O tipo da variável define quais operadores de comparação aparecem no passo seguinte.</p>
+    </div>
+</div>
+
+<div class="seletor" data-url="{% url 'estudos:lista_variaveis' estudo.id %}">
+    <label class="visually-hidden" for="busca-variavel">Buscar variável</label>
+    <input type="search"
+           id="busca-variavel"
+           class="seletor-busca"
+           placeholder="Buscar variável pelo nome"
+           autocomplete="off"
+           autofocus
+           role="combobox"
+           aria-expanded="true"
+           aria-controls="lista-variaveis"
+           aria-autocomplete="list"
+           value="{{ termo }}">
+    <p class="seletor-ajuda">Setas percorrem os resultados, Enter escolhe, Esc limpa a busca.</p>
+
+    <div id="resultados-variaveis" aria-live="polite">
+        {% include "estudos/_resultados_variaveis.html" %}
+    </div>
+</div>
+
+<div class="painel-formulario-acoes">
+    <a class="painel-voltar" href="{% url 'estudos:detalhe' estudo.id %}">Cancelar</a>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'js/seletor_variavel.js' %}"></script>
+{% endblock %}

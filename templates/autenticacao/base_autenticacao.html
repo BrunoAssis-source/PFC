@@ -1,0 +1,31 @@
+{% extends "documento.html" %}
+{% block classe_corpo %}acesso{% endblock %}
+{% block corpo %}
+<main class="acesso-area">
+    <div class="acesso-cartao">
+        <a class="acesso-marca" href="{% url 'login' %}">
+            <span class="acesso-marca-sigla">U</span>
+            <span>UniData</span>
+        </a>
+        <p class="acesso-rotulo">{% block rotulo %}Coleta de dados de pesquisa{% endblock %}</p>
+        <h1 class="acesso-titulo">{% block cabecalho %}{% endblock %}</h1>
+        <p class="acesso-texto">{% block texto %}{% endblock %}</p>
+        {% block corpo_cartao %}{% endblock %}
+    </div>
+    <p class="acesso-rodape">
+        <a href="{% url 'politica_privacidade' %}">Política de privacidade</a>
+    </p>
+</main>
+<script>
+    document.querySelectorAll(".olho").forEach(function (botao) {
+        botao.addEventListener("click", function () {
+            var campo = document.getElementById(botao.dataset.alvo);
+            var visivel = campo.type === "text";
+            campo.type = visivel ? "password" : "text";
+            botao.setAttribute("aria-label", visivel ? "Mostrar senha" : "Ocultar senha");
+            botao.querySelector(".olho-fechado").hidden = visivel;
+            botao.querySelector(".olho-aberto").hidden = !visivel;
+        });
+    });
+</script>
+{% endblock %}

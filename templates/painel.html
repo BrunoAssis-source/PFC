@@ -1,0 +1,56 @@
+{% extends "documento.html" %}
+{% block classe_corpo %}painel{% endblock %}
+{% block corpo %}
+{% with rota=request.resolver_match.url_name %}
+<header class="painel-topo">
+    <a class="painel-marca" href="{% url 'inicio' %}">
+        <span class="painel-marca-sigla">U</span>
+        <span>UniData</span>
+    </a>
+    <div class="painel-usuario">
+        <span class="painel-iniciais">{{ user.iniciais }}</span>
+        <span class="painel-nome">{{ user.nome_completo }}</span>
+        <form method="post" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button class="painel-sair" type="submit" title="Sair" aria-label="Sair">
+                {% include "icones/icone.html" with nome="sair" tamanho=20 %}
+            </button>
+        </form>
+    </div>
+</header>
+
+<div class="painel-corpo">
+    <nav class="painel-menu" aria-label="Seções do sistema">
+        <a class="painel-item {% if rota == 'inicio' %}ativo{% endif %}" href="{% url 'inicio' %}">
+            {% include "icones/icone.html" with nome="inicio" %}
+            <span>Início</span>
+        </a>
+
+        {% if user.e_pesquisador %}
+            <a class="painel-item {% if rota == 'listar' or rota == 'criar' or rota == 'editar' %}ativo{% endif %}" href="{% url 'estudos:listar' %}">
+                {% include "icones/icone.html" with nome="pasta" %}
+                <span>Estudos</span>
+            </a>
+        {% else %}
+            <a class="painel-item {% if rota == 'coleta' %}ativo{% endif %}" href="{% url 'coleta' %}">
+                {% include "icones/icone.html" with nome="registro" %}
+                <span>Registro</span>
+            </a>
+            <a class="painel-item {% if rota == 'pendencias' %}ativo{% endif %}" href="{% url 'pendencias' %}">
+                {% include "icones/icone.html" with nome="relogio" %}
+                <span>Pendências</span>
+            </a>
+        {% endif %}
+    </nav>
+
+    <main class="painel-conteudo">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags|default:'info' }}" role="alert">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+        {% block content %}{% endblock %}
+    </main>
+</div>
+{% endwith %}
+{% endblock %}

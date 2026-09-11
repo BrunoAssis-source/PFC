@@ -1,0 +1,58 @@
+{% extends "painel.html" %}
+{% block title %}{{ estudo.nome }} | UniData{% endblock %}
+{% block content %}
+<div class="painel-cabecalho">
+    <div>
+        <p class="painel-rotulo">{{ estudo.condicao }}</p>
+        <h1 class="painel-titulo">{{ estudo.nome }}</h1>
+        <p class="painel-abertura">{{ estudo.descricao|default:"Sem descrição." }}</p>
+    </div>
+    <div class="painel-cabecalho-acoes">
+        <span class="painel-selo {{ estudo.situacao }}">{{ estudo.get_situacao_display }}</span>
+        <a class="painel-voltar" href="{% url 'estudos:editar' estudo.id %}">Editar estudo</a>
+    </div>
+</div>
+
+<div class="painel-indicadores">
+    <div class="painel-indicador">
+        <span class="painel-numero">{{ criterios|length }}</span>
+        <span class="painel-legenda">Critérios</span>
+    </div>
+    <div class="painel-indicador">
+        <span class="painel-numero">{{ estudo.participantes_necessarios|default:"—" }}</span>
+        <span class="painel-legenda">Participantes necessários</span>
+    </div>
+</div>
+
+<div class="painel-secao">
+    <h2 class="painel-secao-titulo">Critérios de elegibilidade</h2>
+    <span class="painel-secao-contagem">{{ criterios|length }} critério{{ criterios|length|pluralize }}</span>
+</div>
+
+<div class="painel-lista">
+    {% for criterio in criterios %}
+        <div class="painel-linha">
+            <span class="painel-linha-icone" aria-hidden="true">
+                {% include "icones/icone.html" with nome="criterio" tamanho=20 %}
+            </span>
+            <span class="painel-linha-texto">
+                <strong>{{ criterio.enunciado }}</strong>
+                <span class="painel-linha-sub">{{ criterio.variavel.subcategoria }}</span>
+            </span>
+            <form method="post" action="{% url 'estudos:remover_criterio' estudo.id criterio.id %}">
+                {% csrf_token %}
+                <button class="painel-remover" type="submit">Remover</button>
+            </form>
+        </div>
+    {% empty %}
+        <p class="painel-vazio">Nenhum critério neste estudo. Cada critério é uma variável, um operador de comparação e um valor de referência.</p>
+    {% endfor %}
+</div>
+
+<div class="painel-formulario-acoes">
+    <a class="painel-acao" href="{% url 'estudos:escolher_variavel' estudo.id %}">
+        <span aria-hidden="true">+</span> Novo critério
+    </a>
+    <a class="painel-voltar" href="{% url 'estudos:listar' %}">Voltar para os estudos</a>
+</div>
+{% endblock %}

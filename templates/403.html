@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Acesso negado | UniData{% endblock %}
+{% block content %}
+<section class="container py-5" style="max-width: 620px">
+    <h1 class="h3">Acesso negado</h1>
+    <p class="text-secondary">{{ exception|default:"Seu perfil não tem acesso a esta tela." }}</p>
+    <a href="{% url 'inicio' %}">Voltar para o início</a>
+</section>
+{% endblock %}

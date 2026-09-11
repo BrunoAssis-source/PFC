@@ -1,0 +1,26 @@
+{% extends "painel.html" %}
+{% block title %}{% if estudo %}Editar estudo{% else %}Novo estudo{% endif %} | UniData{% endblock %}
+{% block content %}
+<div class="painel-cabecalho">
+    <div>
+        <p class="painel-rotulo">Coleta de dados de pesquisa</p>
+        <h1 class="painel-titulo">{% if estudo %}Editar estudo{% else %}Novo estudo{% endif %}</h1>
+    </div>
+</div>
+
+<form class="painel-formulario" method="post">
+    {% csrf_token %}
+    {% for field in form %}
+        <div class="mb-3">
+            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+            {% if field.help_text %}<div class="ajuda-campo">{{ field.help_text }}</div>{% endif %}
+        </div>
+    {% endfor %}
+    <div class="painel-formulario-acoes">
+        <button class="painel-acao" type="submit">{% if estudo %}Salvar alterações{% else %}Cadastrar estudo{% endif %}</button>
+        <a class="painel-voltar" href="{% url 'estudos:listar' %}">Cancelar</a>
+    </div>
+</form>
+{% endblock %}

@@ -1,0 +1,7 @@
+<div class="campo-senha">
+    {{ campo }}
+    <button class="olho" type="button" data-alvo="{{ campo.id_for_label }}" aria-label="Mostrar senha">
+        {% include "icones/icone.html" with nome="olho_aberto" classe="olho-aberto" tamanho=19 %}
+        {% include "icones/icone.html" with nome="olho_fechado" classe="olho-fechado" tamanho=19 oculto=True %}
+    </button>
+</div>

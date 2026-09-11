@@ -1,0 +1,10 @@
+{% extends "autenticacao/base_autenticacao.html" %}
+{% block title %}Senha redefinida | UniData{% endblock %}
+{% block rotulo %}Recuperação de acesso{% endblock %}
+{% block cabecalho %}Senha redefinida{% endblock %}
+{% block texto %}Sua senha foi atualizada. Você já pode entrar no sistema.{% endblock %}
+{% block corpo_cartao %}
+<div class="acesso-links">
+    <a href="{% url 'login' %}">Entrar</a>
+</div>
+{% endblock %}

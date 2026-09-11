@@ -1,0 +1,44 @@
+{% extends "painel.html" %}
+{% block title %}Propor variável | UniData{% endblock %}
+{% block content %}
+<div class="painel-cabecalho">
+    <div>
+        <p class="painel-rotulo">{{ estudo.nome }}</p>
+        <h1 class="painel-titulo">Propor variável</h1>
+        <p class="painel-abertura">A variável entra no catálogo global e fica disponível para qualquer estudo, então vale conferir se já não existe com outro nome.</p>
+    </div>
+</div>
+
+{% if parecidas %}
+    <div class="painel-lista" style="margin-bottom:1.5rem">
+        <p class="painel-grupo">Variáveis parecidas já no catálogo</p>
+        {% for variavel in parecidas %}
+            <a class="painel-linha" href="{% url 'estudos:criar_criterio' estudo.id variavel.id %}">
+                <span class="painel-linha-texto">
+                    <strong>{{ variavel.nome }}</strong>
+                    <span class="painel-linha-sub">{{ variavel.subcategoria }}, {{ variavel.get_tipo_display }}</span>
+                </span>
+                <span class="painel-linha-contagem">usar esta</span>
+            </a>
+        {% endfor %}
+    </div>
+{% endif %}
+
+<form class="painel-formulario" method="post">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+    {% for field in form %}
+        <div class="mb-3">
+            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+            {% if field.help_text %}<div class="ajuda-campo">{{ field.help_text }}</div>{% endif %}
+        </div>
+    {% endfor %}
+    {% if parecidas %}<input type="hidden" name="confirmar" value="1">{% endif %}
+    <div class="painel-formulario-acoes">
+        <button class="painel-acao" type="submit">{% if parecidas %}Criar mesmo assim{% else %}Criar variável{% endif %}</button>
+        <a class="painel-voltar" href="{% url 'estudos:escolher_variavel' estudo.id %}">Voltar para a busca</a>
+    </div>
+</form>
+{% endblock %}

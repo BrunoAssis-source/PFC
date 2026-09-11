@@ -1,0 +1,45 @@
+{% extends "documento.html" %}
+{% block corpo %}
+    <header class="navbar border-bottom bg-white">
+        <div class="container py-2 d-flex flex-wrap gap-2 align-items-center">
+            <a class="navbar-brand fw-semibold me-auto" href="{% if user.is_authenticated %}{% url 'inicio' %}{% else %}{% url 'login' %}{% endif %}">UniData</a>
+            {% if user.is_authenticated %}
+                <nav class="d-flex flex-wrap gap-3 me-3 small">
+                    {% if user.e_profissional %}
+                        <a href="{% url 'coleta' %}" class="link-dark">Registro de dados</a>
+                        <a href="{% url 'pendencias' %}" class="link-dark">Pendências</a>
+                    {% elif user.e_pesquisador %}
+                        <a href="{% url 'estudos:listar' %}" class="link-dark">Estudos</a>
+                    {% endif %}
+                </nav>
+                <span class="text-secondary small">{{ user.nome_completo }} ({{ user.get_perfil_display }})</span>
+                <form method="post" action="{% url 'logout' %}">
+                    {% csrf_token %}
+                    <button class="btn btn-outline-dark btn-sm" type="submit">Sair</button>
+                </form>
+            {% elif request.resolver_match.url_name != 'login' %}
+                <a class="btn btn-outline-dark btn-sm" href="{% url 'login' %}">Entrar</a>
+            {% endif %}
+        </div>
+    </header>
+
+    {% if messages %}
+        <div class="container pt-3">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <main>{% block content %}{% endblock %}</main>
+
+    <footer class="border-top mt-5">
+        <div class="container py-4 small text-secondary d-flex flex-wrap gap-3 justify-content-between">
+            <span>UniData, Projeto Final de Curso em Sistemas de Informação, Universidade de Mogi das Cruzes.</span>
+            <a href="{% url 'politica_privacidade' %}" class="text-secondary">Política de privacidade</a>
+        </div>
+    </footer>
+{% endblock %}

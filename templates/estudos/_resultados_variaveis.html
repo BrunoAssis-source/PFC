@@ -1,0 +1,77 @@
+{% if modo != "busca" %}
+    <nav class="seletor-caminho-atual" aria-label="Caminho no catálogo">
+        <button type="button" class="migalha" data-destino="">Catálogo</button>
+        {% if categoria %}
+            <span aria-hidden="true">›</span>
+            <button type="button" class="migalha" data-destino="cat={{ categoria.id }}">{{ categoria.codigo }} {{ categoria.nome }}</button>
+        {% endif %}
+        {% if subcategoria %}
+            <span aria-hidden="true">›</span>
+            <span class="migalha atual">{{ subcategoria.codigo }} {{ subcategoria.nome }}</span>
+        {% endif %}
+    </nav>
+{% endif %}
+
+{% if modo == "busca" and chips %}
+    <div class="seletor-chips" role="group" aria-label="Filtrar por subcategoria">
+        <button type="button" class="chip {% if not subcategoria_ativa %}ativo{% endif %}" data-sub="">Todas</button>
+        {% for chip in chips %}
+            <button type="button" class="chip {% if subcategoria_ativa == chip.id|stringformat:'s' %}ativo{% endif %}" data-sub="{{ chip.id }}">
+                {{ chip.nome }} <span class="chip-total">{{ chip.total }}</span>
+            </button>
+        {% endfor %}
+    </div>
+{% endif %}
+
+<ul class="seletor-lista" id="lista-variaveis" role="listbox" aria-label="Catálogo de variáveis">
+    {% if modo == "categorias" %}
+        {% for categoria in categorias %}
+            <li id="no-cat-{{ categoria.id }}" class="seletor-item ramo" role="option" aria-selected="false" data-destino="cat={{ categoria.id }}">
+                <span class="seletor-texto">
+                    <span class="seletor-caminho">Categoria</span>
+                    <span class="seletor-nome">{{ categoria.codigo }} {{ categoria.nome }}</span>
+                </span>
+                <span class="seletor-cobertura">{{ categoria.total }} variáve{{ categoria.total|pluralize:"l,is" }} ›</span>
+            </li>
+        {% endfor %}
+
+    {% elif modo == "subcategorias" %}
+        {% for subcategoria in subcategorias %}
+            <li id="no-sub-{{ subcategoria.id }}" class="seletor-item ramo" role="option" aria-selected="false" data-destino="sub={{ subcategoria.id }}">
+                <span class="seletor-texto">
+                    <span class="seletor-caminho">{{ categoria.codigo }}</span>
+                    <span class="seletor-nome">{{ subcategoria.codigo }} {{ subcategoria.nome }}</span>
+                </span>
+                <span class="seletor-cobertura">{{ subcategoria.total }} variáve{{ subcategoria.total|pluralize:"l,is" }} ›</span>
+            </li>
+        {% endfor %}
+
+    {% else %}
+        {% for variavel in variaveis %}
+            <li id="variavel-{{ variavel.id }}"
+                class="seletor-item{% if variavel.ja_e_criterio %} indisponivel{% endif %}"
+                role="option"
+                aria-selected="false"
+                title="{{ variavel.definicao }}"
+                {% if variavel.ja_e_criterio %}aria-disabled="true"{% else %}data-url="{% url 'estudos:criar_criterio' estudo.id variavel.id %}"{% endif %}>
+                <span class="seletor-texto">
+                    <span class="seletor-caminho">{{ variavel.subcategoria.categoria.codigo }} › {{ variavel.subcategoria.nome }}</span>
+                    <span class="seletor-nome">
+                        {{ variavel.nome }}
+                        <span class="seletor-tipo">{{ variavel.get_tipo_display }}{% if variavel.unidade %}, {{ variavel.unidade }}{% endif %}</span>
+                    </span>
+                </span>
+                {% if variavel.ja_e_criterio %}
+                    <span class="seletor-marca">já é critério</span>
+                {% endif %}
+            </li>
+        {% empty %}
+            <li class="seletor-vazio">
+                <p>Nenhuma variável encontrada{% if termo %} para "{{ termo }}"{% endif %}.</p>
+                <a class="painel-acao" href="{% url 'estudos:propor_variavel' estudo.id %}?sub={{ subcategoria_ativa }}&nome={{ termo|urlencode }}">
+                    <span aria-hidden="true">+</span> Propor variável nova
+                </a>
+            </li>
+        {% endfor %}
+    {% endif %}
+</ul>

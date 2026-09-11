@@ -1,0 +1,37 @@
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f7f9;padding:24px 12px;font-family:Arial,Helvetica,sans-serif;">
+    <tr>
+        <td align="center">
+            <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="width:100%;max-width:560px;background-color:#ffffff;border-radius:8px;overflow:hidden;">
+                <tr>
+                    <td style="background-color:#145da0;padding:20px 32px;">
+                        <span style="color:#ffffff;font-size:18px;font-weight:bold;letter-spacing:.5px;">UniData</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding:32px;color:#17202a;font-size:15px;line-height:1.6;">
+                        <p style="margin:0 0 16px;">Olá, {{ user.nome_completo }}.</p>
+                        <p style="margin:0 0 24px;">Recebemos um pedido para redefinir a senha da sua conta no UniData. Use o botão abaixo para criar uma senha nova.</p>
+                        <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
+                            <tr>
+                                <td style="background-color:#145da0;border-radius:6px;">
+                                    <a href="{{ protocol }}://{{ domain }}{% url 'senha_reset_confirm' uidb64=uid token=token %}"
+                                       style="display:inline-block;padding:12px 28px;color:#ffffff;font-size:15px;font-weight:bold;text-decoration:none;">Criar nova senha</a>
+                                </td>
+                            </tr>
+                        </table>
+                        <p style="margin:0 0 8px;color:#5a6673;font-size:13px;">Se o botão não funcionar, copie o endereço abaixo no navegador:</p>
+                        <p style="margin:0 0 24px;font-size:13px;word-break:break-all;">
+                            <a href="{{ protocol }}://{{ domain }}{% url 'senha_reset_confirm' uidb64=uid token=token %}" style="color:#145da0;">{{ protocol }}://{{ domain }}{% url 'senha_reset_confirm' uidb64=uid token=token %}</a>
+                        </p>
+                        <p style="margin:0;color:#5a6673;font-size:13px;">O link vale por tempo limitado e deixa de funcionar depois do primeiro uso. Se você não pediu a troca, ignore esta mensagem, sua senha atual continua valendo.</p>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="border-top:1px solid #e3e9ee;padding:20px 32px;color:#8a94a0;font-size:12px;line-height:1.5;">
+                        Mensagem automática do UniData, sistema de apoio à coleta de dados de pesquisa da Universidade de Mogi das Cruzes. Não responda este email.
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>

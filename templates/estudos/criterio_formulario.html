@@ -1,0 +1,38 @@
+{% extends "painel.html" %}
+{% load static %}
+{% block title %}Novo critério | UniData{% endblock %}
+{% block content %}
+<div class="painel-cabecalho">
+    <div>
+        <p class="painel-rotulo">{{ estudo.nome }}</p>
+        <h1 class="painel-titulo">{{ variavel.nome }}</h1>
+        <p class="painel-abertura">
+            {% if variavel.definicao %}{{ variavel.definicao }}<br>{% endif %}
+            {{ variavel.get_tipo_display }}{% if variavel.unidade %}, em {{ variavel.unidade }}{% endif %}{% if variavel.minimo is not None %}, de {{ variavel.minimo }} a {{ variavel.maximo }}{% endif %}.
+            {% if variavel.derivada %}Não é coletada diretamente. O valor é calculado a partir de {{ variavel.origem.all|join:" e "|lower }}.{% endif %}
+            {% if variavel.sensivel %}Dado sensível.{% endif %}
+        </p>
+    </div>
+</div>
+
+<form class="painel-formulario" method="post">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+    {% for field in form %}
+        <div class="mb-3">
+            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+            {% if field.help_text %}<div class="ajuda-campo">{{ field.help_text }}</div>{% endif %}
+        </div>
+    {% endfor %}
+    <div class="painel-formulario-acoes">
+        <button class="painel-acao" type="submit">Adicionar critério</button>
+        <a class="painel-voltar" href="{% url 'estudos:escolher_variavel' estudo.id %}">Escolher outra variável</a>
+    </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'js/campo_criterio.js' %}"></script>
+{% endblock %}

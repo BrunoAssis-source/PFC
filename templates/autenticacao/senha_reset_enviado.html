@@ -1,0 +1,10 @@
+{% extends "autenticacao/base_autenticacao.html" %}
+{% block title %}Email enviado | UniData{% endblock %}
+{% block rotulo %}Recuperação de acesso{% endblock %}
+{% block cabecalho %}Verifique seu email{% endblock %}
+{% block texto %}Se houver um cadastro com esse email, as instruções para redefinir a senha foram enviadas.{% endblock %}
+{% block corpo_cartao %}
+<div class="acesso-links">
+    <a href="{% url 'login' %}">Voltar para o login</a>
+</div>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Política de privacidade | UniData{% endblock %}
+{% block content %}
+<section class="container py-5" style="max-width: 820px">
+    <h1 class="h2 mb-4">Política de privacidade</h1>
+    <p>O UniData utiliza os dados informados no cadastro para controlar o acesso ao sistema e orientar a coleta de dados de pesquisa.</p>
+    <h2 class="h5 mt-4">Dados coletados</h2>
+    <p>São armazenados nome completo, email institucional e perfil de acesso. A senha é guardada como hash, pelo mecanismo do Django.</p>
+    <h2 class="h5 mt-4">Uso dos dados</h2>
+    <p>Os dados são usados para autenticação, controle de permissões e registro das operações realizadas no sistema. O cadastro é restrito a quem tem email do domínio institucional. O perfil de acesso é escolhido no cadastro e pode ser corrigido pela administração do sistema.</p>
+    <h2 class="h5 mt-4">Direitos do titular</h2>
+    <p>Solicitações sobre acesso, correção ou exclusão de dados devem ser encaminhadas à administração do sistema.</p>
+</section>
+{% endblock %}

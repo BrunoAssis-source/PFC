@@ -1,0 +1,53 @@
+{% extends "painel.html" %}
+{% block title %}Estudos | UniData{% endblock %}
+{% block content %}
+<div class="painel-cabecalho">
+    <div>
+        <p class="painel-rotulo">Coleta de dados de pesquisa</p>
+        <h1 class="painel-titulo">Estudos</h1>
+    </div>
+    <a class="painel-acao" href="{% url 'estudos:criar' %}">
+        <span aria-hidden="true">+</span> Novo estudo
+    </a>
+</div>
+
+<div class="painel-indicadores">
+    <div class="painel-indicador">
+        <span class="painel-numero">{{ total_ativos }}</span>
+        <span class="painel-legenda">Estudos ativos</span>
+    </div>
+    <div class="painel-indicador">
+        <span class="painel-numero">{{ total_rascunhos }}</span>
+        <span class="painel-legenda">Rascunhos</span>
+    </div>
+    <div class="painel-indicador">
+        <span class="painel-numero">{{ total_encerrados }}</span>
+        <span class="painel-legenda">Encerrados</span>
+    </div>
+</div>
+
+<div class="painel-secao">
+    <h2 class="painel-secao-titulo">Seus estudos</h2>
+    <span class="painel-secao-contagem">{{ estudos|length }} registro{{ estudos|length|pluralize }}</span>
+</div>
+
+<div class="painel-lista">
+    {% for estudo in estudos %}
+        <a class="painel-linha" href="{% url 'estudos:detalhe' estudo.id %}">
+            <span class="painel-linha-icone" aria-hidden="true">
+                {% include "icones/icone.html" with nome="pasta" tamanho=20 %}
+            </span>
+            <span class="painel-linha-texto">
+                <strong>{{ estudo.nome }}</strong>
+                <span class="painel-linha-sub">{{ estudo.condicao }}</span>
+            </span>
+            <span class="painel-linha-contagem">
+                {{ estudo.total_criterios }} critério{{ estudo.total_criterios|pluralize }}{% if estudo.participantes_necessarios %}, meta de {{ estudo.participantes_necessarios }}{% endif %}
+            </span>
+            <span class="painel-selo {{ estudo.situacao }}">{{ estudo.get_situacao_display }}</span>
+        </a>
+    {% empty %}
+        <p class="painel-vazio">Você ainda não cadastrou nenhum estudo. Comece pelo botão Novo estudo.</p>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends "painel.html" %}
+{% block title %}Início | UniData{% endblock %}
+{% block content %}
+<div class="painel-cabecalho">
+    <div>
+        <p class="painel-rotulo">Coleta de dados de pesquisa</p>
+        <h1 class="painel-titulo">Olá, {{ user.nome_completo }}</h1>
+    </div>
+</div>
+
+<p class="painel-abertura">
+    {% if user.e_pesquisador %}
+        Seu acesso é de pesquisador. Você cadastra os estudos e os critérios de elegibilidade de cada um.
+    {% else %}
+        Seu acesso é de profissional de coleta. Você registra os dados dos voluntários e acompanha o que falta preencher.
+    {% endif %}
+</p>
+
+<div class="painel-atalhos">
+    {% if user.e_pesquisador %}
+        <a class="painel-atalho" href="{% url 'estudos:listar' %}">
+            <strong>Estudos</strong>
+            <span>Cadastro de cada estudo e dos critérios de elegibilidade que ele exige.</span>
+        </a>
+    {% else %}
+        <a class="painel-atalho" href="{% url 'coleta' %}">
+            <strong>Registro de dados</strong>
+            <span>Preenchimento das variáveis exigidas pelo estudo.</span>
+        </a>
+        <a class="painel-atalho" href="{% url 'pendencias' %}">
+            <strong>Pendências</strong>
+            <span>O que falta coletar, por voluntário.</span>
+        </a>
+    {% endif %}
+</div>
+{% endblock %}

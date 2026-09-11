@@ -1,0 +1,29 @@
+{% extends "autenticacao/base_autenticacao.html" %}
+{% block title %}Nova senha | UniData{% endblock %}
+{% block rotulo %}Recuperação de acesso{% endblock %}
+{% block cabecalho %}Definir nova senha{% endblock %}
+{% block texto %}{% if validlink %}Escolha uma senha nova para sua conta.{% else %}Este link não é mais válido.{% endif %}{% endblock %}
+{% block corpo_cartao %}
+{% if validlink %}
+    <form method="post">
+        {% csrf_token %}
+        {% for field in form %}
+            <div class="mb-3">
+                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {% if field.field.widget.input_type == "password" %}
+                    {% include "autenticacao/_campo_senha.html" with campo=field %}
+                {% else %}
+                    {{ field }}
+                {% endif %}
+                {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                {% if field.help_text %}<div class="ajuda-campo">{{ field.help_text }}</div>{% endif %}
+            </div>
+        {% endfor %}
+        <button class="acesso-botao" type="submit">Salvar nova senha</button>
+    </form>
+{% else %}
+    <div class="acesso-links">
+        <a href="{% url 'senha_reset' %}">Pedir um link novo</a>
+    </div>
+{% endif %}
+{% endblock %}
