@@ -3,12 +3,25 @@
 {% block content %}
 <section class="container py-5" style="max-width: 820px">
     <h1 class="h2 mb-4">Política de privacidade</h1>
-    <p>O UniData utiliza os dados informados no cadastro para controlar o acesso ao sistema e orientar a coleta de dados de pesquisa.</p>
-    <h2 class="h5 mt-4">Dados coletados</h2>
-    <p>São armazenados nome completo, email institucional e perfil de acesso. A senha é guardada como hash, pelo mecanismo do Django.</p>
+    <p>O UniData é uma ferramenta de trânsito de dados de pesquisa, não um repositório. Os dados de identificação de um participante ficam no sistema apenas enquanto houver estudo ativo que os justifique, e são excluídos automaticamente quando esse vínculo termina.</p>
+
+    <h2 class="h5 mt-4">Dados de conta, em uso hoje</h2>
+    <p>De pesquisador e de profissional responsável pela coleta, o sistema armazena nome completo, email institucional e perfil de acesso. A senha é guardada como hash, pelo mecanismo do Django, nunca em texto legível. O cadastro é restrito a quem tem email do domínio institucional, e o perfil escolhido no cadastro pode ser corrigido pela administração do sistema.</p>
+
+    <h2 class="h5 mt-4">Dados de participante de pesquisa, previstos</h2>
+    <p>O cadastro de participante ainda não está implementado. Quando entrar em operação, o CPF será armazenado cifrado, em tabela separada dos dados de pesquisa, enquanto houver estudo ativo vinculado ao participante. Ao lado do campo cifrado, o sistema manterá um código derivado por HMAC-SHA256, calculado com uma chave secreta própria do sistema, usado para localizar o cadastro e evitar duplicidade sem que a aplicação precise decifrar o CPF. As variáveis de pesquisa, como idade ou condição estudada, se ligarão ao participante somente por esse código, nunca pelo CPF.</p>
+    <p>Esse desenho segue o art. 13, § 4º, da Lei nº 13.709/2018 (LGPD), que define pseudonimização como o tratamento que retira a possibilidade de associar um dado a uma pessoa sem informação adicional mantida em separado pelo controlador, e a Lei nº 14.874/2024 com o Decreto nº 12.651/2025, que regulam a pesquisa com seres humanos no país.</p>
+
     <h2 class="h5 mt-4">Uso dos dados</h2>
-    <p>Os dados são usados para autenticação, controle de permissões e registro das operações realizadas no sistema. O cadastro é restrito a quem tem email do domínio institucional. O perfil de acesso é escolhido no cadastro e pode ser corrigido pela administração do sistema.</p>
+    <p>Os dados de conta são usados para autenticação, controle de permissões e registro das operações realizadas no sistema. Os dados de participante, quando implementados, serão usados pelo pesquisador para a verificação de elegibilidade de cada estudo e, de forma pseudonimizada, para o reuso entre estudo principal e estudo auxiliar, sempre que houver pesquisa ativa que o justifique.</p>
+
+    <h2 class="h5 mt-4">Segurança</h2>
+    <p>O acesso a cada tela é restrito por perfil, verificado a cada requisição, não apenas ocultado no menu. Toda operação sobre dado pessoal, como login, criação de conta, redefinição de senha e negação de acesso, gera um registro de auditoria com usuário, ação, endereço IP e data, sem opção de edição ou exclusão pela interface do sistema.</p>
+
+    <h2 class="h5 mt-4">Prazo de retenção</h2>
+    <p>Dado de conta permanece enquanto a conta estiver ativa. Dado de participante, quando implementado, permanece apenas enquanto houver estudo ativo vinculado a ele, conforme o art. 15, I, da LGPD, que encerra o tratamento quando a finalidade deixa de existir. Quando a aprovação ética de um estudo específico exigir prazo distinto, esse prazo prevalece sobre a regra geral.</p>
+
     <h2 class="h5 mt-4">Direitos do titular</h2>
-    <p>Solicitações sobre acesso, correção ou exclusão de dados devem ser encaminhadas à administração do sistema.</p>
+    <p>O art. 18 da LGPD garante confirmação da existência de tratamento, acesso ao dado, correção de dado incompleto ou desatualizado, anonimização ou eliminação de dado tratado em desconformidade com a lei, informação sobre com quem o dado foi compartilhado e revogação de consentimento. Solicitações sobre acesso, correção ou exclusão de dados devem ser encaminhadas à administração do sistema.</p>
 </section>
 {% endblock %}

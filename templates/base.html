@@ -39,7 +39,10 @@
     <footer class="border-top mt-5">
         <div class="container py-4 small text-secondary d-flex flex-wrap gap-3 justify-content-between">
             <span>UniData, Projeto Final de Curso em Sistemas de Informação, Universidade de Mogi das Cruzes.</span>
-            <a href="{% url 'politica_privacidade' %}" class="text-secondary">Política de privacidade</a>
+            <span class="d-flex gap-3">
+                <a href="{% url 'termos_de_uso' %}" class="text-secondary">Termos de uso</a>
+                <a href="{% url 'politica_privacidade' %}" class="text-secondary">Política de privacidade</a>
+            </span>
         </div>
     </footer>
 {% endblock %}

@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     "autenticacao",
     "estudos",
     "catalogo",
+    "auditoria",
 ]
 
 MIDDLEWARE = [
@@ -106,12 +107,18 @@ LOGOUT_REDIRECT_URL = "login"
 # O Bootstrap usa "danger" onde o Django usa "error".
 MESSAGE_TAGS = {mensagens.ERROR: "danger"}
 
-EMAIL_BACKEND = "configuracao.email.BackendBrevo"
 DEFAULT_FROM_EMAIL = os.environ.get("EMAIL_REMETENTE", "UniData <noreply@alunos.umc.br>")
 
 BREVO_API_KEY = os.environ.get("BREVO_API_KEY", "")
-if not BREVO_API_KEY:
+if BREVO_API_KEY:
+    EMAIL_BACKEND = "configuracao.email.BackendBrevo"
+elif DEBUG:
+    # Sem chave no desenvolvimento a aplicação sobe mesmo assim, e o email
+    # aparece no terminal em vez de sair pela API. Serve para conferir o link
+    # de recuperação de senha sem precisar de conta no Brevo.
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+else:
     raise ImproperlyConfigured(
         "Defina BREVO_API_KEY no arquivo .env ou no ambiente. "
-        "O envio de email acontece apenas pela API do Brevo."
+        "Com DJANGO_DEBUG=0 o envio acontece apenas pela API do Brevo."
     )

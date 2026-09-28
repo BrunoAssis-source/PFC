@@ -32,6 +32,12 @@ Variável de texto livre não serve de critério e não aparece no seletor. Um c
 
 Faltam o cadastro de voluntários, os valores coletados e a verificação de elegibilidade. Por isso as telas do profissional, registro de dados e pendências, existem ainda sem conteúdo. O banco em uso durante o desenvolvimento é SQLite; a migração para PostgreSQL está prevista.
 
+O app `auditoria` registra login com sucesso e com falha, logout, criação de conta, redefinição de senha, negação de acesso por perfil insuficiente e leitura ou edição de estudo. Cada registro grava usuário, ação, IP e data. A tela fica em `/auditoria/`, aberta a quem tem `is_staff`, do jeito que o Django admin já reconhece como administrador, sem depender do perfil de pesquisador ou profissional. Pelo admin do Django o mesmo registro aparece sem opção de editar nem excluir.
+
+Ainda faltam três pontos de auditoria: troca de senha por quem já está logado (hoje só existe o fluxo de redefinição por email), edição de critério (a tela atual só cria e remove, não edita) e acesso a variável marcada como sensível (o campo `sensivel` existe no catálogo, mas nenhuma tela ainda lê ou restringe por ele). Cada um entra na auditoria quando a funcionalidade correspondente existir.
+
+Política de privacidade e termos de uso são páginas próprias, abertas sem login, e o cadastro exige a leitura dos dois antes de criar conta. A política já descreve o que está implementado (dado de conta) e o que está previsto para quando o cadastro de participante existir (CPF cifrado, pseudonimização por HMAC-SHA256, prazo de retenção ligado ao estudo ativo), deixando explícito o que é real e o que é desenho futuro.
+
 ## Stack
 
 Django 5.2 no padrão MVT, PostgreSQL (SQLite por enquanto, no desenvolvimento), Bootstrap 5 e pytest. Aplicação monolítica, sem API própria, porque o único cliente é o navegador.
@@ -59,7 +65,7 @@ Copie o `.env.example` para `.env` e preencha as variáveis descritas abaixo. De
 
 O `createsuperuser` pede email antes do nome, porque o email é o campo de identificação do usuário no lugar do nome de acesso padrão do Django.
 
-A aplicação responde em http://127.0.0.1:8000. A raiz é a tela de login, e o admin do Django fica em `/admin/`. A política de privacidade, em `/politica-de-privacidade/`, abre sem login.
+A aplicação responde em http://127.0.0.1:8000. A raiz é a tela de login, e o admin do Django fica em `/admin/`. Política de privacidade (`/politica-de-privacidade/`) e termos de uso (`/termos-de-uso/`) abrem sem login.
 
 ## Variáveis de ambiente
 
@@ -70,7 +76,7 @@ Ficam no arquivo `.env`, na raiz, que não é versionado. O `settings.py` lê es
 | `DJANGO_SECRET_KEY` | Obrigatória. Veja abaixo como gerar |
 | `DJANGO_DEBUG` | `1` no desenvolvimento, `0` em produção |
 | `DJANGO_ALLOWED_HOSTS` | Domínios separados por vírgula. Obrigatória quando `DJANGO_DEBUG=0` |
-| `BREVO_API_KEY` | Obrigatória. Chave da API transacional do Brevo |
+| `BREVO_API_KEY` | Chave da API transacional do Brevo. Obrigatória apenas quando `DJANGO_DEBUG=0` |
 | `EMAIL_REMETENTE` | Remetente das mensagens, no formato `Nome <endereco@dominio>` |
 
 Para gerar a chave secreta:
@@ -79,11 +85,11 @@ Para gerar a chave secreta:
 .venv\Scripts\python.exe -c "from django.core.management.utils import get_random_secret_key as g; print(g())"
 ```
 
-A aplicação não sobe sem `DJANGO_SECRET_KEY` e `BREVO_API_KEY`. A falha aparece como `ImproperlyConfigured` já no `manage.py check`, com a instrução do que preencher.
+A aplicação não sobe sem `DJANGO_SECRET_KEY`. A falha aparece como `ImproperlyConfigured` já no `manage.py check`, com a instrução do que preencher. `BREVO_API_KEY` só é exigida com `DJANGO_DEBUG=0`; no desenvolvimento, deixá-la vazia manda o email para o terminal.
 
 ## Email
 
-O envio acontece apenas pela API do Brevo, em `configuracao/email.py`. Cada mensagem vira um `POST` para `https://api.brevo.com/v3/smtp/email`, com a chave no cabeçalho `api-key` e o destinatário definido no momento do envio, sem lista de contatos.
+Em produção o envio acontece apenas pela API do Brevo, em `configuracao/email.py`. No desenvolvimento sem `BREVO_API_KEY` o Django usa o backend de console e escreve a mensagem inteira no terminal, o que basta para conferir o link de recuperação de senha. Cada mensagem vira um `POST` para `https://api.brevo.com/v3/smtp/email`, com a chave no cabeçalho `api-key` e o destinatário definido no momento do envio, sem lista de contatos.
 
 Escrito como backend de email do Django, o que mantém as views usando `send_mail` normalmente. A mensagem de recuperação de senha tem versão em texto e versão em HTML, e a segunda é a que vai no `htmlContent`.
 
@@ -99,6 +105,7 @@ Quando o envio falha, o Django registra o erro no log e ainda assim mostra a tel
 
 ```
 autenticacao/    usuário, formulários, views e rotas de acesso
+auditoria/       registro de eventos de acesso e de uso
 catalogo/        variáveis, domínios de valores e operadores de comparação
 estudos/         estudos, critérios e seletor de variáveis
 configuracao/    settings, urls do projeto e backend de email

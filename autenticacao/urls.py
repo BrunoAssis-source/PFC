@@ -4,11 +4,13 @@ from django.urls import path, reverse_lazy
 from .forms import NovaSenhaForm, SolicitarSenhaForm
 from .views import (
     EntrarView,
+    RedefinirSenhaView,
     cadastrar,
     coleta,
     inicio,
     pendencias,
     politica_privacidade,
+    termos_de_uso,
 )
 
 urlpatterns = [
@@ -37,7 +39,7 @@ urlpatterns = [
     ),
     path(
         "senha/redefinir/<uidb64>/<token>/",
-        auth_views.PasswordResetConfirmView.as_view(
+        RedefinirSenhaView.as_view(
             template_name="autenticacao/senha_confirmar.html",
             form_class=NovaSenhaForm,
             success_url=reverse_lazy("senha_reset_complete"),
@@ -50,4 +52,5 @@ urlpatterns = [
         name="senha_reset_complete",
     ),
     path("politica-de-privacidade/", politica_privacidade, name="politica_privacidade"),
+    path("termos-de-uso/", termos_de_uso, name="termos_de_uso"),
 ]

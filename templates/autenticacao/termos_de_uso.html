@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Termos de uso | UniData{% endblock %}
+{% block content %}
+<section class="container py-5" style="max-width: 820px">
+    <h1 class="h2 mb-4">Termos de uso</h1>
+    <p>Ao criar conta no UniData, pesquisador e profissional responsável pela coleta concordam com as regras descritas aqui. O tratamento do dado do participante e o tempo pelo qual ele permanece no sistema estão na <a href="{% url 'politica_privacidade' %}">política de privacidade</a>, não neste termo.</p>
+
+    <h2 class="h5 mt-4">O que é o sistema</h2>
+    <p>O UniData orienta a coleta de dados de participantes de pesquisa a partir dos critérios de elegibilidade definidos por cada estudo, verifica a compatibilidade do participante durante o preenchimento e permite que o dado já registrado seja reaproveitado por outro estudo ativo, no estudo auxiliar, quando aplicável.</p>
+
+    <h2 class="h5 mt-4">Perfis e uso permitido</h2>
+    <p>O pesquisador cadastra estudo, variável e critério de elegibilidade, acompanha o resultado da verificação e decide, por conta própria, quem entra em cada estudo, decisão que fica registrada. O profissional responsável pela coleta preenche o dado do participante e acompanha a relação de pendências, sem acesso a critério, resultado de verificação ou classificação. Cada perfil usa o sistema dentro do que sua função autoriza, e uma tentativa de acessar tela fora desse limite é negada, mesmo digitando o endereço diretamente.</p>
+
+    <h2 class="h5 mt-4">Cadastro e acesso</h2>
+    <p>O cadastro exige email do domínio institucional, e é responsabilidade do usuário informar nome verdadeiro e mantê-lo atualizado. A senha é pessoal e intransferível, e sua guarda cabe a quem a cadastrou. Há um mecanismo de redefinição por email para o caso de esquecimento, mas o UniData não se responsabiliza por acesso indevido decorrente de compartilhamento voluntário de credencial.</p>
+
+    <h2 class="h5 mt-4">Uso aceitável</h2>
+    <p>O sistema deve ser usado apenas para a finalidade de pesquisa que motivou seu desenvolvimento. É vedado inserir participante em estudo sem que a verificação de elegibilidade correspondente tenha sido concluída, contornar a restrição de acesso por perfil por qualquer meio, e inserir dado de pesquisa que não se relacione a um estudo legitimamente cadastrado. No estudo principal, a verificação é eliminatória, e nenhum registro é salvo quando um critério deixa de ser atendido durante o preenchimento.</p>
+
+    <h2 class="h5 mt-4">Responsabilidade sobre o conteúdo inserido</h2>
+    <p>O pesquisador responde pela exatidão do critério que cadastra e pela decisão final sobre quem entra em cada estudo, já que essa decisão é dele, não do sistema. O profissional responsável pela coleta responde pela exatidão do dado do participante no momento do preenchimento.</p>
+
+    <h2 class="h5 mt-4">O que o sistema garante</h2>
+    <p>O UniData garante, no que depende da própria aplicação, a disponibilidade do sistema, a integridade do dado em trânsito entre a coleta e o uso pelo pesquisador, e a aplicação correta da verificação de elegibilidade conforme o critério cadastrado. O sistema não decide quem entra em um estudo, apenas sugere uma classificação, e não recruta participante. Ficam fora do controle do sistema a veracidade do dado informado pelo profissional responsável pela coleta no momento da entrevista, falha de conectividade do lado do usuário e indisponibilidade de serviço de terceiro do qual o sistema depende, como o provedor de envio de email.</p>
+
+    <h2 class="h5 mt-4">Uso indevido</h2>
+    <p>O uso fora destas regras, incluída a tentativa reiterada de acesso a tela fora do perfil autorizado, sujeita a conta a suspensão ou revogação de acesso. Toda tentativa negada por perfil insuficiente fica registrada em log de auditoria, com usuário, ação e data.</p>
+
+    <h2 class="h5 mt-4">Propriedade intelectual</h2>
+    <p>O UniData foi desenvolvido como Projeto Final de Curso do Bacharelado em Sistemas de Informação da Universidade de Mogi das Cruzes, por Bruno de Faria Assis e João Gabriel Dos Santos. O uso do sistema não transfere nenhum direito sobre o software, restrito ao acesso funcional necessário à pesquisa.</p>
+
+    <h2 class="h5 mt-4">Alterações, vigência e aceite</h2>
+    <p>Este termo pode ser atualizado quando houver mudança relevante na forma de operação do sistema. A versão vigente fica disponível nesta página, e o uso continuado após uma atualização equivale à aceitação da nova versão. O termo passa a valer para cada usuário a partir da conclusão do cadastro.</p>
+</section>
+{% endblock %}

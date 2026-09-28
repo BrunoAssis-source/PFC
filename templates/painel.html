@@ -41,6 +41,13 @@
                 <span>Pendências</span>
             </a>
         {% endif %}
+
+        {% if user.is_staff %}
+            <a class="painel-item {% if request.resolver_match.app_name == 'auditoria' %}ativo{% endif %}" href="{% url 'auditoria:listar' %}">
+                {% include "icones/icone.html" with nome="auditoria" %}
+                <span>Auditoria</span>
+            </a>
+        {% endif %}
     </nav>
 
     <main class="painel-conteudo">

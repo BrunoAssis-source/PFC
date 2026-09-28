@@ -3,6 +3,8 @@ from django.core.exceptions import ValidationError
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
 
+from auditoria.models import RegistroAuditoria
+from auditoria.servicos import registrar
 from autenticacao.models import Usuario
 from autenticacao.permissoes import exige_perfil
 from catalogo.models import Categoria, Subcategoria, Variavel, normalizar
@@ -35,6 +37,7 @@ def criar(request):
         estudo = form.save(commit=False)
         estudo.pesquisador = request.user
         estudo.save()
+        registrar(RegistroAuditoria.Acao.ESTUDO_EDICAO, request=request, usuario=request.user, objeto=estudo.nome)
         return redirect("estudos:detalhe", id=estudo.id)
     return render(request, "estudos/formulario.html", {"form": form, "estudo": None})
 
@@ -45,6 +48,7 @@ def editar(request, id):
     form = EstudoForm(request.POST or None, instance=estudo)
     if request.method == "POST" and form.is_valid():
         form.save()
+        registrar(RegistroAuditoria.Acao.ESTUDO_EDICAO, request=request, usuario=request.user, objeto=estudo.nome)
         return redirect("estudos:detalhe", id=estudo.id)
     return render(request, "estudos/formulario.html", {"form": form, "estudo": estudo})
 
@@ -53,6 +57,7 @@ def editar(request, id):
 def detalhe(request, id):
     estudo = estudo_do_pesquisador(request, id)
     criterios = estudo.criterios.select_related("variavel", "variavel__subcategoria").prefetch_related("opcoes")
+    registrar(RegistroAuditoria.Acao.ESTUDO_LEITURA, request=request, usuario=request.user, objeto=estudo.nome)
     return render(request, "estudos/detalhe.html", {"estudo": estudo, "criterios": criterios})
 
 
