@@ -27,6 +27,18 @@ def exige_perfil(*perfis):
     return decorador
 
 
+def recusa_alterar_superusuario(request, alvo):
+    # Quem tem só is_staff não pode editar nem trocar a senha de um superusuário, senão assumiria a conta dele.
+    if alvo.is_superuser and not request.user.is_superuser:
+        registrar(
+            RegistroAuditoria.Acao.ACESSO_NEGADO,
+            request=request,
+            usuario=request.user,
+            objeto=request.path,
+        )
+        raise PermissionDenied("Apenas superusuários alteram a conta de um superusuário.")
+
+
 def exige_administrador(view):
     # Administrador é quem tem is_staff, do jeito que o Django admin já define. Não é um perfil de pesquisa.
     @wraps(view)

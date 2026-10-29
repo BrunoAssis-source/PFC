@@ -7,10 +7,14 @@ from .views import (
     RedefinirSenhaView,
     cadastrar,
     coleta,
+    criar_usuario,
+    editar_usuario,
     inicio,
     pendencias,
     politica_privacidade,
     termos_de_uso,
+    trocar_senha_usuario,
+    usuarios,
 )
 
 urlpatterns = [
@@ -18,6 +22,10 @@ urlpatterns = [
     path("inicio/", inicio, name="inicio"),
     path("coleta/", coleta, name="coleta"),
     path("pendencias/", pendencias, name="pendencias"),
+    path("usuarios/", usuarios, name="usuarios"),
+    path("usuarios/novo/", criar_usuario, name="criar_usuario"),
+    path("usuarios/<int:usuario_id>/", editar_usuario, name="editar_usuario"),
+    path("usuarios/<int:usuario_id>/senha/", trocar_senha_usuario, name="trocar_senha_usuario"),
     path("cadastrar/", cadastrar, name="cadastro"),
     path("sair/", auth_views.LogoutView.as_view(), name="logout"),
     path(

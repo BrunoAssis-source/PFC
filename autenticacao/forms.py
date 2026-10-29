@@ -58,3 +58,35 @@ class SolicitarSenhaForm(EstiloBootstrapMixin, PasswordResetForm):
 
 class NovaSenhaForm(EstiloBootstrapMixin, SetPasswordForm):
     pass
+
+
+class UsuarioEdicaoForm(EstiloBootstrapMixin, forms.ModelForm):
+    class Meta:
+        model = Usuario
+        fields = ("nome_completo", "email", "perfil", "is_active", "is_staff")
+        labels = {"is_staff": "Administrador"}
+
+    def __init__(self, *args, editando_a_si_mesmo=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        for nome in ("is_active", "is_staff"):
+            self.fields[nome].widget.attrs["class"] = "form-check-input"
+        # Quem edita a própria conta não pode se desativar nem tirar o próprio acesso de administrador.
+        if editando_a_si_mesmo:
+            del self.fields["is_active"], self.fields["is_staff"]
+
+    def clean_email(self):
+        return self.cleaned_data["email"].lower()
+
+
+class UsuarioCriacaoForm(EstiloBootstrapMixin, UserCreationForm):
+    class Meta:
+        model = Usuario
+        fields = ("nome_completo", "email", "perfil", "is_staff", "password1", "password2")
+        labels = {"is_staff": "Administrador"}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["is_staff"].widget.attrs["class"] = "form-check-input"
+
+    def clean_email(self):
+        return self.cleaned_data["email"].lower()

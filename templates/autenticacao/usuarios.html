@@ -1,0 +1,79 @@
+{% extends "painel.html" %}
+{% block title %}Usuários | UniData{% endblock %}
+{% block content %}
+<div class="painel-cabecalho">
+    <div>
+        <p class="painel-rotulo">Administração</p>
+        <h1 class="painel-titulo">Usuários</h1>
+    </div>
+    <a class="painel-acao" href="{% url 'criar_usuario' %}">
+        <span aria-hidden="true">+</span> Novo usuário
+    </a>
+</div>
+
+<form class="row g-2 mb-4" method="get">
+    <div class="col-12 col-md-4">
+        <input class="form-control" type="search" name="q" value="{{ busca }}" placeholder="Buscar por nome ou email" aria-label="Buscar por nome ou email">
+    </div>
+    <div class="col-6 col-md-2">
+        <select class="form-select" name="perfil" aria-label="Perfil">
+            <option value="">Todos os perfis</option>
+            {% for valor, rotulo in perfis %}<option value="{{ valor }}" {% if perfil == valor %}selected{% endif %}>{{ rotulo|capfirst }}</option>{% endfor %}
+        </select>
+    </div>
+    <div class="col-6 col-md-2">
+        <select class="form-select" name="situacao" aria-label="Situação">
+            <option value="">Qualquer situação</option>
+            <option value="ativo" {% if situacao == "ativo" %}selected{% endif %}>Ativos</option>
+            <option value="inativo" {% if situacao == "inativo" %}selected{% endif %}>Inativos</option>
+        </select>
+    </div>
+    <div class="col-6 col-md-2">
+        <select class="form-select" name="administrador" aria-label="Administrador">
+            <option value="">Todos</option>
+            <option value="sim" {% if administrador == "sim" %}selected{% endif %}>Só administradores</option>
+        </select>
+    </div>
+    <div class="col-6 col-md-2 d-flex gap-2">
+        <button class="painel-acao" type="submit">Filtrar</button>
+        <a class="painel-voltar align-self-center" href="{% url 'usuarios' %}">Limpar</a>
+    </div>
+</form>
+
+<div class="painel-secao">
+    <h2 class="painel-secao-titulo">Contas cadastradas</h2>
+    <span class="painel-secao-contagem">{{ pagina.paginator.count }} registro{{ pagina.paginator.count|pluralize }}</span>
+</div>
+
+<div class="painel-lista">
+    {% for usuario in pagina %}
+        <a class="painel-linha" href="{% url 'editar_usuario' usuario.id %}">
+            <span class="painel-linha-icone" aria-hidden="true">
+                {% include "icones/icone.html" with nome="usuarios" tamanho=20 %}
+            </span>
+            <span class="painel-linha-texto">
+                <strong>{{ usuario.nome_completo }}</strong>
+                <span class="painel-linha-sub">{{ usuario.email }}</span>
+            </span>
+            <span class="painel-linha-contagem">{{ usuario.get_perfil_display }}{% if usuario.is_staff %} · administrador{% endif %}</span>
+            <span class="painel-selo {% if usuario.is_active %}ativo{% else %}encerrado{% endif %}">{% if usuario.is_active %}Ativo{% else %}Inativo{% endif %}</span>
+        </a>
+    {% empty %}
+        <p class="painel-vazio">Nenhum usuário cadastrado.</p>
+    {% endfor %}
+</div>
+
+{% if pagina.has_other_pages %}
+    <nav aria-label="Paginação" class="mt-3">
+        <ul class="pagination pagination-sm">
+            {% if pagina.has_previous %}
+                <li class="page-item"><a class="page-link" href="?{% if filtros %}{{ filtros }}&{% endif %}pagina={{ pagina.previous_page_number }}">Anterior</a></li>
+            {% endif %}
+            <li class="page-item disabled"><span class="page-link">Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span></li>
+            {% if pagina.has_next %}
+                <li class="page-item"><a class="page-link" href="?{% if filtros %}{{ filtros }}&{% endif %}pagina={{ pagina.next_page_number }}">Próxima</a></li>
+            {% endif %}
+        </ul>
+    </nav>
+{% endif %}
+{% endblock %}
