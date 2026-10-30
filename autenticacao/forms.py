@@ -78,6 +78,12 @@ class UsuarioEdicaoForm(EstiloBootstrapMixin, forms.ModelForm):
         return self.cleaned_data["email"].lower()
 
 
+class MeuPerfilForm(EstiloBootstrapMixin, forms.ModelForm):
+    class Meta:
+        model = Usuario
+        fields = ("nome_completo",)
+
+
 class UsuarioCriacaoForm(EstiloBootstrapMixin, UserCreationForm):
     class Meta:
         model = Usuario

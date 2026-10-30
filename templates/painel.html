@@ -8,8 +8,10 @@
         <span>UniData</span>
     </a>
     <div class="painel-usuario">
-        <span class="painel-iniciais">{{ user.iniciais }}</span>
-        <span class="painel-nome">{{ user.nome_completo }}</span>
+        <a class="painel-usuario-link" href="{% url 'meu_perfil' %}" title="Meus dados">
+            <span class="painel-iniciais">{{ user.iniciais }}</span>
+            <span class="painel-nome">{{ user.nome_completo }}</span>
+        </a>
         <form method="post" action="{% url 'logout' %}">
             {% csrf_token %}
             <button class="painel-sair" type="submit" title="Sair" aria-label="Sair">

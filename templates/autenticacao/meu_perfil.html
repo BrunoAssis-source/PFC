@@ -1,0 +1,33 @@
+{% extends "painel.html" %}
+{% block title %}Meus dados | UniData{% endblock %}
+{% block content %}
+<div class="painel-cabecalho">
+    <div>
+        <p class="painel-rotulo">Sua conta</p>
+        <h1 class="painel-titulo">Meus dados</h1>
+    </div>
+</div>
+
+<form class="painel-formulario" method="post">
+    {% csrf_token %}
+    <div class="mb-3">
+        <label class="form-label" for="{{ form.nome_completo.id_for_label }}">{{ form.nome_completo.label }}</label>
+        {{ form.nome_completo }}
+        {% for error in form.nome_completo.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+    </div>
+    <div class="mb-3">
+        <label class="form-label" for="email-login">Email</label>
+        <input class="form-control" id="email-login" type="email" value="{{ user.email }}" disabled>
+        <div class="ajuda-campo">O email é o seu login e não pode ser alterado.</div>
+    </div>
+    <div class="mb-3">
+        <label class="form-label" for="perfil-atual">Perfil</label>
+        <input class="form-control" id="perfil-atual" type="text" value="{{ user.get_perfil_display|capfirst }}" disabled>
+        <div class="ajuda-campo">Para mudar o perfil, procure um administrador.</div>
+    </div>
+    <div class="painel-formulario-acoes">
+        <button class="painel-acao" type="submit">Salvar alterações</button>
+        <a class="painel-voltar" href="{% url 'inicio' %}">Cancelar</a>
+    </div>
+</form>
+{% endblock %}

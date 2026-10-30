@@ -9,7 +9,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from auditoria.models import RegistroAuditoria
 from auditoria.servicos import registrar
 
-from .forms import CadastroForm, LoginForm, NovaSenhaForm, UsuarioCriacaoForm, UsuarioEdicaoForm
+from .forms import CadastroForm, LoginForm, MeuPerfilForm, NovaSenhaForm, UsuarioCriacaoForm, UsuarioEdicaoForm
 from .models import Usuario
 from .permissoes import exige_administrador, exige_perfil, recusa_alterar_superusuario
 
@@ -36,6 +36,17 @@ def cadastrar(request):
 @login_required
 def inicio(request):
     return render(request, "autenticacao/inicio.html")
+
+
+@login_required
+def meu_perfil(request):
+    form = MeuPerfilForm(request.POST or None, instance=request.user)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        registrar(RegistroAuditoria.Acao.USUARIO_EDICAO, request=request, usuario=request.user, objeto=request.user.email)
+        messages.success(request, "Seus dados foram atualizados.")
+        return redirect("meu_perfil")
+    return render(request, "autenticacao/meu_perfil.html", {"form": form})
 
 
 @exige_perfil(Usuario.Perfil.PROFISSIONAL)

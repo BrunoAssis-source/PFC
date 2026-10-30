@@ -239,6 +239,18 @@ body {
     gap: .75rem;
 }
 
+.painel-usuario-link {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    color: inherit;
+    text-decoration: none;
+}
+
+.painel-usuario-link:hover .painel-nome {
+    text-decoration: underline;
+}
+
 .painel-iniciais {
     display: grid;
     place-items: center;

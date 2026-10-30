@@ -10,6 +10,7 @@ from .views import (
     criar_usuario,
     editar_usuario,
     inicio,
+    meu_perfil,
     pendencias,
     politica_privacidade,
     termos_de_uso,
@@ -20,6 +21,7 @@ from .views import (
 urlpatterns = [
     path("", EntrarView.as_view(), name="login"),
     path("inicio/", inicio, name="inicio"),
+    path("perfil/", meu_perfil, name="meu_perfil"),
     path("coleta/", coleta, name="coleta"),
     path("pendencias/", pendencias, name="pendencias"),
     path("usuarios/", usuarios, name="usuarios"),
