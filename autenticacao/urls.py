@@ -14,6 +14,7 @@ from .views import (
     pendencias,
     politica_privacidade,
     termos_de_uso,
+    TrocarSenhaView,
     trocar_senha_usuario,
     usuarios,
 )
@@ -22,6 +23,7 @@ urlpatterns = [
     path("", EntrarView.as_view(), name="login"),
     path("inicio/", inicio, name="inicio"),
     path("perfil/", meu_perfil, name="meu_perfil"),
+    path("perfil/senha/", TrocarSenhaView.as_view(), name="trocar_senha"),
     path("coleta/", coleta, name="coleta"),
     path("pendencias/", pendencias, name="pendencias"),
     path("usuarios/", usuarios, name="usuarios"),

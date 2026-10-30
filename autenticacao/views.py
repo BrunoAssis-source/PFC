@@ -1,15 +1,24 @@
 from django.contrib import messages
 from django.contrib.auth import login, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.views import LoginView, PasswordResetConfirmView
+from django.contrib.auth.views import LoginView, PasswordChangeView, PasswordResetConfirmView
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse_lazy
 
 from auditoria.models import RegistroAuditoria
 from auditoria.servicos import registrar
 
-from .forms import CadastroForm, LoginForm, MeuPerfilForm, NovaSenhaForm, UsuarioCriacaoForm, UsuarioEdicaoForm
+from .forms import (
+    CadastroForm,
+    LoginForm,
+    MeuPerfilForm,
+    NovaSenhaForm,
+    TrocarSenhaForm,
+    UsuarioCriacaoForm,
+    UsuarioEdicaoForm,
+)
 from .models import Usuario
 from .permissoes import exige_administrador, exige_perfil, recusa_alterar_superusuario
 
@@ -148,4 +157,16 @@ class RedefinirSenhaView(PasswordResetConfirmView):
     def form_valid(self, form):
         resposta = super().form_valid(form)
         registrar(RegistroAuditoria.Acao.SENHA_REDEFINIDA, request=self.request, usuario=form.user)
+        return resposta
+
+
+class TrocarSenhaView(PasswordChangeView):
+    template_name = "autenticacao/trocar_senha.html"
+    form_class = TrocarSenhaForm
+    success_url = reverse_lazy("meu_perfil")
+
+    def form_valid(self, form):
+        resposta = super().form_valid(form)
+        registrar(RegistroAuditoria.Acao.SENHA_REDEFINIDA, request=self.request, usuario=self.request.user, objeto=self.request.user.email)
+        messages.success(self.request, "Senha alterada.")
         return resposta

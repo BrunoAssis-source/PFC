@@ -1,12 +1,28 @@
 from django import forms
 from django.contrib.auth.forms import (
     AuthenticationForm,
+    PasswordChangeForm,
     PasswordResetForm,
     SetPasswordForm,
     UserCreationForm,
 )
 
 from .models import Usuario
+
+
+AJUDA_SENHA = (
+    "Use pelo menos 8 caracteres. Uma frase com três ou quatro palavras sem relação entre si, "
+    "misturando letras e números, é fácil de lembrar e difícil de adivinhar. "
+    "Evite senhas comuns, só números e trechos do seu nome ou email."
+)
+
+
+class AjudaSenhaMixin:
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for nome in ("password1", "new_password1"):
+            if nome in self.fields:
+                self.fields[nome].help_text = AJUDA_SENHA
 
 
 class EstiloBootstrapMixin:
@@ -34,7 +50,7 @@ class LoginForm(EstiloBootstrapMixin, AuthenticationForm):
     username = forms.EmailField(label="Email", widget=forms.EmailInput(attrs={"autocomplete": "email"}))
 
 
-class CadastroForm(EstiloBootstrapMixin, UserCreationForm):
+class CadastroForm(AjudaSenhaMixin, EstiloBootstrapMixin, UserCreationForm):
     class Meta:
         model = Usuario
         fields = ("nome_completo", "email", "perfil", "password1", "password2")
@@ -56,7 +72,7 @@ class SolicitarSenhaForm(EstiloBootstrapMixin, PasswordResetForm):
     pass
 
 
-class NovaSenhaForm(EstiloBootstrapMixin, SetPasswordForm):
+class NovaSenhaForm(AjudaSenhaMixin, EstiloBootstrapMixin, SetPasswordForm):
     pass
 
 
@@ -78,13 +94,17 @@ class UsuarioEdicaoForm(EstiloBootstrapMixin, forms.ModelForm):
         return self.cleaned_data["email"].lower()
 
 
+class TrocarSenhaForm(AjudaSenhaMixin, EstiloBootstrapMixin, PasswordChangeForm):
+    pass
+
+
 class MeuPerfilForm(EstiloBootstrapMixin, forms.ModelForm):
     class Meta:
         model = Usuario
         fields = ("nome_completo",)
 
 
-class UsuarioCriacaoForm(EstiloBootstrapMixin, UserCreationForm):
+class UsuarioCriacaoForm(AjudaSenhaMixin, EstiloBootstrapMixin, UserCreationForm):
     class Meta:
         model = Usuario
         fields = ("nome_completo", "email", "perfil", "is_staff", "password1", "password2")

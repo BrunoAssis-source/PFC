@@ -18,7 +18,7 @@
     <div class="mb-3">
         <label class="form-label" for="email-login">Email</label>
         <input class="form-control" id="email-login" type="email" value="{{ user.email }}" disabled>
-        <div class="ajuda-campo">O email é o seu login e não pode ser alterado.</div>
+        <div class="ajuda-campo">O email é o seu login. Somente um administrador pode alterá-lo, então procure um se precisar trocar.</div>
     </div>
     <div class="mb-3">
         <label class="form-label" for="perfil-atual">Perfil</label>
@@ -27,6 +27,7 @@
     </div>
     <div class="painel-formulario-acoes">
         <button class="painel-acao" type="submit">Salvar alterações</button>
+        <a class="painel-voltar" href="{% url 'trocar_senha' %}">Alterar senha</a>
         <a class="painel-voltar" href="{% url 'inicio' %}">Cancelar</a>
     </div>
 </form>
