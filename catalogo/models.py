@@ -160,6 +160,16 @@ class Variavel(models.Model):
         return f"{self.subcategoria.categoria.nome} › {self.subcategoria.nome}"
 
     @property
+    def tipo_resumido(self):
+        return {
+            self.Tipo.NUMERICA: "número",
+            self.Tipo.NOMINAL: "lista",
+            self.Tipo.ORDINAL: "lista ordenada",
+            self.Tipo.BOOLEANA: "sim ou não",
+            self.Tipo.DATA: "data",
+        }.get(self.tipo, self.get_tipo_display())
+
+    @property
     def rotulo(self):
         return self.nome_curto or self.nome
 

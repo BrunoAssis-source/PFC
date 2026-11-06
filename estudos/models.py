@@ -32,6 +32,22 @@ class Estudo(models.Model):
     def __str__(self):
         return self.nome
 
+    def regras(self):
+        """Critérios do estudo separados em inclusão e exclusão, já com o que a frase precisa."""
+        criterios = self.criterios.select_related("variavel").prefetch_related("opcoes")
+        inclusao = [c for c in criterios if c.tipo_regra == Criterio.TipoRegra.INCLUSAO]
+        exclusao = [c for c in criterios if c.tipo_regra == Criterio.TipoRegra.EXCLUSAO]
+        return inclusao, exclusao
+
+    @property
+    def resumo_texto(self):
+        inclusao, exclusao = self.regras()
+        partes = []
+        for regras, abertura in ((inclusao, "Serão incluídos"), (exclusao, "Serão excluídos")):
+            if regras:
+                partes.append(f"{abertura} participantes com {'; '.join(c.descricao for c in regras)}.")
+        return " ".join(partes)
+
     @property
     def resumo_criterios(self):
         inclusao = self.criterios.filter(tipo_regra=Criterio.TipoRegra.INCLUSAO).count()
@@ -70,6 +86,10 @@ class Criterio(models.Model):
     precisao = models.CharField("precisão da data", max_length=3, choices=Precisao.choices, default=Precisao.DIA)
     opcoes = models.ManyToManyField("catalogo.OpcaoDominio", blank=True, related_name="criterios", verbose_name="valores")
 
+    # Valores escolhidos que ainda não foram gravados. A prévia da tela monta o
+    # critério sem salvar, e o ManyToMany só existe depois do save.
+    opcoes_em_memoria = None
+
     class Meta:
         verbose_name = "critério"
         verbose_name_plural = "critérios"
@@ -104,22 +124,33 @@ class Criterio(models.Model):
 
     @property
     def frase(self):
-        """Texto lido pelo pesquisador na prévia e na lista de regras do estudo."""
         verbo = self.TipoRegra(self.tipo_regra).label
-        separador = ":" if self.variavel.tipo == Variavel.Tipo.BOOLEANA else ""
-        return f"{verbo} participantes com {self.variavel.rotulo.lower()}{separador} {self.condicao}"
+        return f"{verbo} participantes com {self.descricao}"
+
+    @property
+    def descricao(self):
+        """Variável e condição, como aparecem na lista de regras e no resumo do estudo."""
+        condicao = self.condicao
+        separador = "" if condicao.startswith(":") else " "
+        return f"{self.variavel.rotulo.lower()}{separador}{condicao}"
+
+    @property
+    def selecionadas(self):
+        if self.opcoes_em_memoria is not None:
+            return self.opcoes_em_memoria
+        return list(self.opcoes.all())
 
     @property
     def condicao(self):
         operador = self.operador
         unidade = f" {self.variavel.unidade}" if self.variavel.unidade else ""
         if operador in (Operador.VERDADEIRO, Operador.FALSO):
-            return "sim" if operador == Operador.VERDADEIRO else "não"
+            return ": sim" if operador == Operador.VERDADEIRO else ": não"
 
         if self.valor_numero is not None:
-            valor, ate = self.numero(self.valor_numero), self.valor_numero_ate
+            valor = self.numero(self.valor_numero)
             if operador == Operador.ENTRE:
-                return f"entre {valor} e {self.numero(ate)}{unidade}"
+                return f"entre {valor} e {self.numero(self.valor_numero_ate)}{unidade}"
             texto = {
                 Operador.IGUAL: "igual a",
                 Operador.DIFERENTE: "diferente de",
@@ -136,27 +167,27 @@ class Criterio(models.Model):
                 return f"entre {inicio} e {self.data_formatada(self.valor_data_ate)}"
             return f"{Operador(operador).label} {inicio}"
 
-        rotulos = [opcao.rotulo for opcao in self.opcoes.all()]
+        rotulos = [opcao.rotulo.lower() for opcao in self.selecionadas]
         if operador == Operador.ENTRE:
             return f"entre {' e '.join(rotulos)}"
         lista = rotulos[0] if len(rotulos) == 1 else f"{', '.join(rotulos[:-1])} ou {rotulos[-1]}"
+        ordinal = self.variavel.tipo == Variavel.Tipo.ORDINAL
         if operador == Operador.NAO_ESTA_EM and len(rotulos) > 1:
             lista = lista.replace(" ou ", " e ")
         return {
             Operador.E: f"igual a {lista}",
             Operador.NAO_E: f"diferente de {lista}",
-            Operador.ESTA_EM: f"igual a {lista}",
+            Operador.ESTA_EM: f": {lista}",
             Operador.NAO_ESTA_EM: f"diferente de {lista}",
-            Operador.MAIOR_IGUAL: f"de pelo menos {lista}",
-            Operador.MENOR_IGUAL: f"de no máximo {lista}",
+            Operador.MAIOR_IGUAL: f"{'a partir de' if ordinal else 'de pelo menos'} {lista}",
+            Operador.MENOR_IGUAL: f"{'até' if ordinal else 'de no máximo'} {lista}",
         }[operador]
 
     def pendencia(self):
         """Primeira mensagem que impede o critério de ser gravado, ou None se está completo."""
         try:
             self.clean()
-            if self.pk:
-                self.validar_opcoes()
+            self.validar_opcoes()
         except ValidationError as erro:
             return erro.messages[0]
         return None
@@ -209,16 +240,15 @@ class Criterio(models.Model):
                 raise ValidationError(f"O valor passa do máximo plausível da variável, que é {variavel.maximo}.")
 
     def validar_opcoes(self):
-        """Roda depois do save, porque ManyToMany só existe com a linha gravada."""
         tipo = self.variavel.tipo
         if tipo not in (Variavel.Tipo.NOMINAL, Variavel.Tipo.ORDINAL):
             return
-        quantidade = self.opcoes.count()
+        quantidade = len(self.selecionadas)
+        if quantidade < 1:
+            raise ValidationError({"opcoes": "Escolha ao menos um valor."})
         if self.operador in (Operador.E, Operador.NAO_E, Operador.MENOR_IGUAL, Operador.MAIOR_IGUAL):
             if quantidade != 1:
                 raise ValidationError({"opcoes": "Este operador aceita um valor só."})
         elif self.operador == Operador.ENTRE:
             if quantidade != 2:
                 raise ValidationError({"opcoes": "O operador entre exige dois valores."})
-        elif quantidade < 1:
-            raise ValidationError({"opcoes": "Escolha ao menos um valor."})

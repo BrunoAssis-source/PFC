@@ -16,19 +16,20 @@ Estão implementados a autenticação com controle de acesso por perfil, o catá
 
 A autenticação cobre o cadastro restrito ao domínio `@alunos.umc.br`, login, recuperação de senha por email e a separação entre pesquisador e profissional, com as rotas de cada um negando acesso a quem não tem o perfil.
 
-O pesquisador cadastra e edita estudos, cada um com situação de rascunho, ativo ou encerrado. Em cada estudo ele inclui e remove critérios de elegibilidade. Todo critério parte de uma variável do catálogo, que o pesquisador encontra descendo por categoria e subcategoria ou buscando pelo nome. Se a busca não acha a variável, ele pode propor uma nova, que entra no catálogo e fica disponível para qualquer estudo. O catálogo já vem carregado com as variáveis do perfil sociodemográfico.
+O pesquisador cadastra e edita estudos, cada um com situação de rascunho, ativo ou encerrado. Os critérios de elegibilidade ficam numa tela só, com três colunas: o catálogo de variáveis à esquerda, a condição do critério ao centro e a lista do estudo à direita. O catálogo aparece em árvore (domínio, grupo, variável) ou, com a busca preenchida, como lista de resultados. A busca aceita sinônimos ("grau de instrução" acha Escolaridade), ignora acento e caixa e tolera erro de digitação, tudo no PostgreSQL, com as extensões `unaccent` e `pg_trgm`. Se nada é encontrado, o pesquisador pode propor uma variável nova, que entra no catálogo e fica disponível para qualquer estudo.
 
-Os operadores oferecidos dependem do tipo da variável:
+Cada critério é de inclusão ou de exclusão, e a condição muda conforme o tipo da variável:
 
-| Tipo | Operadores |
+| Tipo | Como o pesquisador define a condição |
 |---|---|
-| Numérica | =, ≠, <, ≤, >, ≥, entre |
-| Categórica nominal | é, não é, está em, não está em |
-| Categórica ordinal | os da nominal, mais ≤, ≥ e entre, pela ordem das opções |
-| Booleana | é verdadeiro, é falso |
-| Data | antes de, depois de, entre |
+| Numérica | entre (dois valores), pelo menos, no máximo ou exatamente, com a unidade ao lado |
+| Categórica nominal | caixas de seleção com as opções cadastradas, com botões para marcar todas e limpar |
+| Categórica ordinal | a partir de, até ou exatamente, mais a escolha de um nível da lista ordenada |
+| Booleana | sim ou não |
 
-Variável de texto livre não serve de critério e não aparece no seletor. Um critério de data pode ser escrito com dia, só com mês e ano ou só com o ano, e é exibido do mesmo jeito que foi informado.
+Uma caixa "Como vai ficar" mostra a frase do critério enquanto ele é montado, por exemplo "Incluir participantes com idade entre 18 e 65 anos." O botão de adicionar só habilita quando a condição está completa, e o aviso diz o que falta. A frase e a validação vêm do servidor, do mesmo formulário que grava o critério, para existirem num lugar só. À direita, o resumo reúne tudo em texto corrido. A idade é uma variável só, em anos. Data de nascimento e faixa etária ficam fora da tela, e o pesquisador nunca informa datas.
+
+O mesmo critério pode se repetir no estudo, por exemplo idade mínima na inclusão e idade máxima na exclusão. Variável de texto livre não serve de critério.
 
 Faltam o cadastro de voluntários, os valores coletados e a verificação de elegibilidade. Por isso as telas do profissional, registro de dados e pendências, existem ainda sem conteúdo.
 
@@ -111,11 +112,11 @@ Quando o envio falha, o Django registra o erro no log e ainda assim mostra a tel
 autenticacao/    usuário, formulários, views e rotas de acesso
 auditoria/       registro de eventos de acesso e de uso
 catalogo/        variáveis, domínios de valores e operadores de comparação
-estudos/         estudos, critérios e seletor de variáveis
+estudos/         estudos e a tela de critérios de elegibilidade
 configuracao/    settings, urls do projeto e backend de email
 templates/       layouts e telas de cada app
 static/css/      folha de estilo sobre o Bootstrap
-static/js/       seletor de variáveis e campos do formulário de critério
+static/js/       interação da tela de critérios
 ```
 
 O modelo de usuário é próprio, com email como identificador e nome completo obrigatório. O cadastro é aberto a quem tem email `@alunos.umc.br` e a pessoa escolhe o próprio perfil no formulário. A conta feita pelo próprio visitante nasce inativa e só passa a valer quando ele confirma o email, pelo link ou pelo código de 8 caracteres que a mensagem traz. O código vale 30 minutos e o link 3 dias. Cada envio gera os dois de novo e cancela os anteriores. A tabela `ConfirmacaoEmail` guarda só o hash de cada um, com o horário do envio e as contagens do limitador: 60 segundos entre pedidos, no máximo 5 envios por hora e 5 tentativas erradas por código, depois das quais é preciso pedir outro. O Brevo reescreve os links do email para medir cliques e não há opção por mensagem para desligar isso, por isso o código existe como segundo caminho. Quem tenta entrar antes de confirmar recebe o aviso e pode pedir o envio de novo na tela de login. Contas criadas pelo administrador ficam ativas na hora. O administrador pode corrigir o perfil de qualquer conta pelo admin ou pela tela de usuários.
@@ -134,4 +135,4 @@ pytest, com os testes em arquivos `teste_*.py`.
 
 Os testes rodam no PostgreSQL do container, que precisa estar no ar. O pytest cria e descarta um banco de teste à parte, sem tocar nos dados de desenvolvimento.
 
-Os testes atuais, todos em `estudos/teste_seletor_variavel.py`, cobrem a navegação e a busca no seletor de variáveis, a gravação de critérios de data em cada precisão (incluindo a recusa de data que não existe no calendário) e a negativa de acesso ao seletor, tanto para o profissional quanto para o pesquisador que não é dono do estudo. Cadastro, login e as demais telas de estudo ainda estão sem testes.
+A tela de critérios ainda não tem testes automatizados. Cadastro, login e as demais telas de estudo também estão sem testes.

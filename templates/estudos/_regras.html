@@ -1,0 +1,42 @@
+<h2>Critérios do estudo</h2>
+
+<h3 class="regras-titulo inclusao">Inclusão · {{ inclusao|length }}</h3>
+{% if inclusao %}
+    <ul class="regras-lista">
+        {% for criterio in inclusao %}
+            <li class="regra">
+                <span>{{ criterio.descricao }}</span>
+                <form method="post" class="remover-criterio" action="{% url 'estudos:remover_criterio' estudo.id criterio.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="regra-remover" aria-label="Remover critério: {{ criterio.descricao }}">×</button>
+                </form>
+            </li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <p class="regras-vazio">Nenhum critério de inclusão.</p>
+{% endif %}
+
+<h3 class="regras-titulo exclusao">Exclusão · {{ exclusao|length }}</h3>
+{% if exclusao %}
+    <ul class="regras-lista">
+        {% for criterio in exclusao %}
+            <li class="regra">
+                <span>{{ criterio.descricao }}</span>
+                <form method="post" class="remover-criterio" action="{% url 'estudos:remover_criterio' estudo.id criterio.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="regra-remover" aria-label="Remover critério: {{ criterio.descricao }}">×</button>
+                </form>
+            </li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <p class="regras-vazio">Nenhum critério de exclusão.</p>
+{% endif %}
+
+{% if resumo %}
+    <div class="regras-resumo">
+        <p class="previa-rotulo">Resumo para o protocolo</p>
+        <p>{{ resumo }}</p>
+    </div>
+{% endif %}

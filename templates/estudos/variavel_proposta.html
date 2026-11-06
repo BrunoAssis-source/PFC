@@ -13,7 +13,7 @@
     <div class="painel-lista" style="margin-bottom:1.5rem">
         <p class="painel-grupo">Variáveis parecidas já no catálogo</p>
         {% for variavel in parecidas %}
-            <a class="painel-linha" href="{% url 'estudos:criar_criterio' estudo.id variavel.id %}">
+            <a class="painel-linha" href="{% url 'estudos:criterios' estudo.id %}?variavel={{ variavel.id }}">
                 <span class="painel-linha-texto">
                     <strong>{{ variavel.nome }}</strong>
                     <span class="painel-linha-sub">{{ variavel.subcategoria }}, {{ variavel.get_tipo_display }}</span>
@@ -38,7 +38,7 @@
     {% if parecidas %}<input type="hidden" name="confirmar" value="1">{% endif %}
     <div class="painel-formulario-acoes">
         <button class="painel-acao" type="submit">{% if parecidas %}Criar mesmo assim{% else %}Criar variável{% endif %}</button>
-        <a class="painel-voltar" href="{% url 'estudos:escolher_variavel' estudo.id %}">Voltar para a busca</a>
+        <a class="painel-voltar" href="{% url 'estudos:criterios' estudo.id %}">Voltar para a busca</a>
     </div>
 </form>
 {% endblock %}
