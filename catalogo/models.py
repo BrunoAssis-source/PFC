@@ -156,6 +156,10 @@ class Variavel(models.Model):
         return self.nome
 
     @property
+    def caminho(self):
+        return f"{self.subcategoria.categoria.nome} › {self.subcategoria.nome}"
+
+    @property
     def rotulo(self):
         return self.nome_curto or self.nome
 
