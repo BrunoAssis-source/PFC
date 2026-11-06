@@ -30,7 +30,7 @@ Os operadores oferecidos dependem do tipo da variável:
 
 Variável de texto livre não serve de critério e não aparece no seletor. Um critério de data pode ser escrito com dia, só com mês e ano ou só com o ano, e é exibido do mesmo jeito que foi informado.
 
-Faltam o cadastro de voluntários, os valores coletados e a verificação de elegibilidade. Por isso as telas do profissional, registro de dados e pendências, existem ainda sem conteúdo. O banco em uso durante o desenvolvimento é SQLite; a migração para PostgreSQL está prevista.
+Faltam o cadastro de voluntários, os valores coletados e a verificação de elegibilidade. Por isso as telas do profissional, registro de dados e pendências, existem ainda sem conteúdo.
 
 O app `auditoria` registra login com sucesso e com falha, logout, criação de conta, redefinição de senha, negação de acesso por perfil insuficiente e leitura ou edição de estudo. Cada registro grava usuário, ação, IP e data. A tela fica em `/auditoria/`, aberta a quem tem `is_staff`, do jeito que o Django admin já reconhece como administrador, sem depender do perfil de pesquisador ou profissional. Pelo admin do Django o mesmo registro aparece sem opção de editar nem excluir.
 
@@ -40,7 +40,7 @@ Política de privacidade e termos de uso são páginas próprias, abertas sem lo
 
 ## Stack
 
-Django 5.2 no padrão MVT, PostgreSQL (SQLite por enquanto, no desenvolvimento), Bootstrap 5 e pytest. Aplicação monolítica, sem API própria, porque o único cliente é o navegador.
+Django 5.2 no padrão MVT, PostgreSQL, Bootstrap 5 e pytest. Aplicação monolítica, sem API própria, porque o único cliente é o navegador.
 
 O envio de email usa a API transacional do Brevo, com requisição HTTP direta em um backend de email do Django.
 
@@ -48,20 +48,23 @@ Em produção: Render para a aplicação e Neon para o banco.
 
 ## Como executar
 
-Requer Python 3.14.
+Requer Python 3.14 e Docker, usado apenas para o banco. O Django roda na máquina local.
 
 ```
 python -m venv .venv
 .venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-Copie o `.env.example` para `.env` e preencha as variáveis descritas abaixo. Depois:
+Copie o `.env.example` para `.env` e preencha as variáveis descritas abaixo, inclusive `DB_PASSWORD`. Depois:
 
 ```
+docker compose up -d
 .venv\Scripts\python.exe manage.py migrate
 .venv\Scripts\python.exe manage.py createsuperuser
 .venv\Scripts\python.exe manage.py runserver
 ```
+
+O `docker compose up -d` sobe o PostgreSQL 16 com um volume nomeado, então os dados sobrevivem a `docker compose down`. O `migrate` já carrega o catálogo de variáveis e ativa as extensões `unaccent` e `pg_trgm`, usadas na busca de critérios. Se a porta 5432 já estiver ocupada por outro PostgreSQL na máquina, troque `DB_PORT` no `.env` (por exemplo para 5433) antes de subir o container.
 
 O `createsuperuser` pede email antes do nome, porque o email é o campo de identificação do usuário no lugar do nome de acesso padrão do Django.
 
@@ -76,6 +79,7 @@ Ficam no arquivo `.env`, na raiz, que não é versionado. O `settings.py` lê es
 | `DJANGO_SECRET_KEY` | Obrigatória. Veja abaixo como gerar |
 | `DJANGO_DEBUG` | `1` no desenvolvimento, `0` em produção |
 | `DJANGO_ALLOWED_HOSTS` | Domínios separados por vírgula. Obrigatória quando `DJANGO_DEBUG=0` |
+| `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT` | Conexão com o PostgreSQL. O `docker-compose.yml` cria o banco com os mesmos valores |
 | `BREVO_API_KEY` | Chave da API transacional do Brevo. Obrigatória apenas quando `DJANGO_DEBUG=0` |
 | `EMAIL_REMETENTE` | Remetente das mensagens, no formato `Nome <endereco@dominio>` |
 
@@ -127,5 +131,7 @@ pytest, com os testes em arquivos `teste_*.py`.
 ```
 .venv\Scripts\python.exe -m pytest
 ```
+
+Os testes rodam no PostgreSQL do container, que precisa estar no ar. O pytest cria e descarta um banco de teste à parte, sem tocar nos dados de desenvolvimento.
 
 Os testes atuais, todos em `estudos/teste_seletor_variavel.py`, cobrem a navegação e a busca no seletor de variáveis, a gravação de critérios de data em cada precisão (incluindo a recusa de data que não existe no calendário) e a negativa de acesso ao seletor, tanto para o profissional quanto para o pesquisador que não é dono do estudo. Cadastro, login e as demais telas de estudo ainda estão sem testes.
