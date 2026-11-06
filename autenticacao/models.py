@@ -50,9 +50,26 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
         return (partes[0][0] + partes[-1][0]).upper() if len(partes) > 1 else partes[0][:2].upper()
 
     @property
+    def aguarda_confirmacao(self):
+        # Quem nunca entrou e está inativo ainda não confirmou o email. O administrador também pode desativar contas,
+        # mas essas já tiveram login, então não caem aqui.
+        return not self.is_active and self.last_login is None
+
+    @property
     def e_pesquisador(self):
         return self.perfil == self.Perfil.PESQUISADOR
 
     @property
     def e_profissional(self):
         return self.perfil == self.Perfil.PROFISSIONAL
+
+
+class ConfirmacaoEmail(models.Model):
+    # Uma linha por usuário. Guarda só o hash do código e do segredo do link, e cada novo envio sobrescreve os anteriores.
+    usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE, related_name="confirmacao")
+    codigo_hash = models.CharField(max_length=64)
+    link_hash = models.CharField(max_length=64)
+    enviado_em = models.DateTimeField()
+    janela_inicio = models.DateTimeField()
+    envios_na_janela = models.PositiveSmallIntegerField(default=0)
+    tentativas = models.PositiveSmallIntegerField(default=0)

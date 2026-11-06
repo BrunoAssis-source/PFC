@@ -1,0 +1,14 @@
+Olá, {{ usuario.nome_completo }}.
+
+Recebemos um cadastro no UniData com este email. Para ativar a conta, abra o endereço abaixo:
+
+{{ link }}
+
+Se o link não abrir, volte à tela de cadastro do UniData e digite este código:
+
+{{ codigo }}
+
+O código vale por 30 minutos e o link por 3 dias. Pedir um novo envio cancela o código e o link anteriores. A conta só fica ativa depois da confirmação.
+Se você não fez o cadastro, ignore esta mensagem e nada será ativado.
+
+Mensagem automática do UniData. Não responda este email.

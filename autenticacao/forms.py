@@ -49,6 +49,23 @@ class EstiloBootstrapMixin:
 class LoginForm(EstiloBootstrapMixin, AuthenticationForm):
     username = forms.EmailField(label="Email", widget=forms.EmailInput(attrs={"autocomplete": "email"}))
 
+    def clean(self):
+        try:
+            return super().clean()
+        except forms.ValidationError:
+            # O backend trata conta inativa como credencial inválida. Só avisa que falta confirmar
+            # quem acertou a senha, para o aviso não revelar quais emails têm cadastro.
+            email = self.cleaned_data.get("username", "")
+            usuario = Usuario.objects.filter(email__iexact=email).first()
+            if usuario and usuario.aguarda_confirmacao and usuario.check_password(self.cleaned_data.get("password", "")):
+                self.email_nao_confirmado = True
+                self.request.session["email_confirmacao"] = usuario.email
+                raise forms.ValidationError(
+                    "Falta confirmar o seu email. Abra o link que enviamos no cadastro.",
+                    code="email_nao_confirmado",
+                )
+            raise
+
 
 class CadastroForm(AjudaSenhaMixin, EstiloBootstrapMixin, UserCreationForm):
     class Meta:
@@ -116,3 +133,16 @@ class UsuarioCriacaoForm(AjudaSenhaMixin, EstiloBootstrapMixin, UserCreationForm
 
     def clean_email(self):
         return self.cleaned_data["email"].lower()
+
+
+class ReenviarConfirmacaoForm(EstiloBootstrapMixin, forms.Form):
+    email = forms.EmailField(label="Email", widget=forms.EmailInput(attrs={"autocomplete": "email"}))
+
+
+class CodigoConfirmacaoForm(EstiloBootstrapMixin, forms.Form):
+    email = forms.EmailField(label="Email", widget=forms.EmailInput(attrs={"autocomplete": "email"}))
+    codigo = forms.CharField(
+        label="Código recebido por email",
+        max_length=12,
+        widget=forms.TextInput(attrs={"autocomplete": "one-time-code", "placeholder": "XXXXXXXX"}),
+    )

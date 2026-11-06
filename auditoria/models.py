@@ -13,6 +13,7 @@ class RegistroAuditoria(models.Model):
         ESTUDO_LEITURA = "estudo_leitura", "leitura de estudo"
         ESTUDO_EDICAO = "estudo_edicao", "edição de estudo"
         USUARIO_EDICAO = "usuario_edicao", "edição de usuário"
+        USUARIO_EXCLUSAO = "usuario_exclusao", "exclusão de usuário"
 
     # Nulo quando o login falhou antes de identificar um usuário válido.
     usuario = models.ForeignKey(

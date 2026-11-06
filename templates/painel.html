@@ -49,7 +49,7 @@
                 {% include "icones/icone.html" with nome="auditoria" %}
                 <span>Auditoria</span>
             </a>
-            <a class="painel-item {% if rota == 'usuarios' or rota == 'editar_usuario' or rota == 'criar_usuario' or rota == 'trocar_senha_usuario' %}ativo{% endif %}" href="{% url 'usuarios' %}">
+            <a class="painel-item {% if rota == 'usuarios' or rota == 'editar_usuario' or rota == 'criar_usuario' or rota == 'trocar_senha_usuario' or rota == 'excluir_usuario' %}ativo{% endif %}" href="{% url 'usuarios' %}">
                 {% include "icones/icone.html" with nome="usuarios" %}
                 <span>Usuários</span>
             </a>

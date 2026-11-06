@@ -31,6 +31,9 @@
         {% if pode_trocar_senha %}
             <a class="painel-voltar" href="{% url 'trocar_senha_usuario' usuario.id %}">Alterar senha</a>
         {% endif %}
+        {% if pode_excluir %}
+            <a class="painel-voltar perigo" href="{% url 'excluir_usuario' usuario.id %}">Excluir usuário</a>
+        {% endif %}
         <a class="painel-voltar" href="{% url 'usuarios' %}">Cancelar</a>
     </div>
 </form>
