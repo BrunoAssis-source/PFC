@@ -32,6 +32,20 @@ class Estudo(models.Model):
     def __str__(self):
         return self.nome
 
+    @property
+    def resumo_criterios(self):
+        inclusao = self.criterios.filter(tipo_regra=Criterio.TipoRegra.INCLUSAO).count()
+        exclusao = self.criterios.count() - inclusao
+        if not inclusao and not exclusao:
+            return "Nenhum critério definido"
+        partes = []
+        if inclusao:
+            partes.append(f"{inclusao} de inclusão")
+        if exclusao:
+            partes.append(f"{exclusao} de exclusão")
+        total = inclusao + exclusao
+        return f"{total} {'critério' if total == 1 else 'critérios'}: " + " e ".join(partes)
+
 
 class Criterio(models.Model):
     class Precisao(models.TextChoices):
@@ -39,7 +53,12 @@ class Criterio(models.Model):
         MES = "mes", "mês e ano"
         ANO = "ano", "apenas o ano"
 
+    class TipoRegra(models.TextChoices):
+        INCLUSAO = "inclusao", "Incluir"
+        EXCLUSAO = "exclusao", "Excluir"
+
     estudo = models.ForeignKey(Estudo, on_delete=models.CASCADE, related_name="criterios")
+    tipo_regra = models.CharField("regra", max_length=8, choices=TipoRegra.choices, default=TipoRegra.INCLUSAO)
     variavel = models.ForeignKey(Variavel, on_delete=models.PROTECT, related_name="criterios")
     operador = models.CharField("operador", max_length=12, choices=Operador.choices)
 
@@ -54,7 +73,7 @@ class Criterio(models.Model):
     class Meta:
         verbose_name = "critério"
         verbose_name_plural = "critérios"
-        ordering = ["variavel__codigo"]
+        ordering = ["tipo_regra", "variavel__codigo"]
 
     def __str__(self):
         return self.enunciado
@@ -82,6 +101,65 @@ class Criterio(models.Model):
         if self.valor_data is not None:
             return f"{self.variavel.nome} {rotulo} {self.data_formatada(self.valor_data)}"
         return f"{self.variavel.nome} {rotulo} {self.lista_de_opcoes}"
+
+    @property
+    def frase(self):
+        """Texto lido pelo pesquisador na prévia e na lista de regras do estudo."""
+        verbo = self.TipoRegra(self.tipo_regra).label
+        separador = ":" if self.variavel.tipo == Variavel.Tipo.BOOLEANA else ""
+        return f"{verbo} participantes com {self.variavel.rotulo.lower()}{separador} {self.condicao}"
+
+    @property
+    def condicao(self):
+        operador = self.operador
+        unidade = f" {self.variavel.unidade}" if self.variavel.unidade else ""
+        if operador in (Operador.VERDADEIRO, Operador.FALSO):
+            return "sim" if operador == Operador.VERDADEIRO else "não"
+
+        if self.valor_numero is not None:
+            valor, ate = self.numero(self.valor_numero), self.valor_numero_ate
+            if operador == Operador.ENTRE:
+                return f"entre {valor} e {self.numero(ate)}{unidade}"
+            texto = {
+                Operador.IGUAL: "igual a",
+                Operador.DIFERENTE: "diferente de",
+                Operador.MAIOR_IGUAL: "de pelo menos",
+                Operador.MENOR_IGUAL: "de no máximo",
+                Operador.MAIOR: "acima de",
+                Operador.MENOR: "abaixo de",
+            }[operador]
+            return f"{texto} {valor}{unidade}"
+
+        if self.valor_data is not None:
+            inicio = self.data_formatada(self.valor_data)
+            if operador == Operador.ENTRE:
+                return f"entre {inicio} e {self.data_formatada(self.valor_data_ate)}"
+            return f"{Operador(operador).label} {inicio}"
+
+        rotulos = [opcao.rotulo for opcao in self.opcoes.all()]
+        if operador == Operador.ENTRE:
+            return f"entre {' e '.join(rotulos)}"
+        lista = rotulos[0] if len(rotulos) == 1 else f"{', '.join(rotulos[:-1])} ou {rotulos[-1]}"
+        if operador == Operador.NAO_ESTA_EM and len(rotulos) > 1:
+            lista = lista.replace(" ou ", " e ")
+        return {
+            Operador.E: f"igual a {lista}",
+            Operador.NAO_E: f"diferente de {lista}",
+            Operador.ESTA_EM: f"igual a {lista}",
+            Operador.NAO_ESTA_EM: f"diferente de {lista}",
+            Operador.MAIOR_IGUAL: f"de pelo menos {lista}",
+            Operador.MENOR_IGUAL: f"de no máximo {lista}",
+        }[operador]
+
+    def pendencia(self):
+        """Primeira mensagem que impede o critério de ser gravado, ou None se está completo."""
+        try:
+            self.clean()
+            if self.pk:
+                self.validar_opcoes()
+        except ValidationError as erro:
+            return erro.messages[0]
+        return None
 
     def data_formatada(self, valor):
         if self.precisao == self.Precisao.ANO:
