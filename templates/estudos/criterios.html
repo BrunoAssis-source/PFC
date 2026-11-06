@@ -29,7 +29,7 @@
             {% for dominio in arvore %}
                 <p class="arvore-dominio">{{ dominio.categoria.nome }}</p>
                 {% for grupo in dominio.grupos %}
-                    <details class="arvore-grupo" {% if forloop.parentloop.first and forloop.first %}open{% endif %}>
+                    <details class="arvore-grupo">
                         <summary>{{ grupo.subcategoria.nome }} <span class="arvore-total">{{ grupo.variaveis|length }}</span></summary>
                         <ul class="arvore-lista">
                             {% for variavel in grupo.variaveis %}

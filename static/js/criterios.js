@@ -9,7 +9,7 @@
     var resultados = document.getElementById("resultados-busca");
     var configuracao = document.getElementById("configuracao");
     var regras = document.getElementById("regras");
-    var textoInicial = configuracao.innerHTML;
+    var aberta = { url: null, botao: null };
     var esperaBusca = null;
     var esperaPrevia = null;
     var ultimaBusca = "";
@@ -66,6 +66,7 @@
     }
 
     function abrirConfiguracao(endereco, botao) {
+        aberta = { url: endereco, botao: botao };
         marcarAtiva(botao);
         pegar(endereco).then(function (html) {
             configuracao.innerHTML = html;
@@ -153,8 +154,9 @@
                 return resposta.text().then(function (html) {
                     if (resposta.ok) {
                         regras.innerHTML = html;
-                        configuracao.innerHTML = textoInicial;
-                        marcarAtiva(null);
+                        // Recarrega a mesma variável com o formulário limpo, para
+                        // adicionar outro critério sobre ela sem escolhê-la de novo.
+                        abrirConfiguracao(aberta.url, aberta.botao);
                     } else {
                         document.getElementById("previa").innerHTML = html;
                     }

@@ -29,6 +29,13 @@ def test_pagina_mostra_a_arvore_sem_codigos_internos(cliente, estudo):
     assert "SOC" not in html and "IDN" not in html
 
 
+def test_arvore_abre_com_todos_os_grupos_fechados(cliente, estudo):
+    html = cliente.get(endereco("criterios", estudo)).content.decode()
+
+    assert '<details class="arvore-grupo">' in html
+    assert 'arvore-grupo" open' not in html
+
+
 def test_arvore_nao_lista_data_de_nascimento_nem_faixa_etaria(cliente, estudo):
     html = cliente.get(endereco("criterios", estudo)).content.decode()
 
