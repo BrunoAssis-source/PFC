@@ -120,6 +120,8 @@ class Variavel(models.Model):
     subcategoria = models.ForeignKey(Subcategoria, on_delete=models.PROTECT, related_name="variaveis")
     codigo = models.SlugField("código", max_length=60, unique=True)
     nome = models.CharField("nome", max_length=120)
+    # Rótulo que cabe na tela de critérios, onde o nome completo ficaria longo.
+    nome_curto = models.CharField("nome curto", max_length=60, blank=True)
     tipo = models.CharField("tipo", max_length=10, choices=Tipo.choices)
 
     definicao = models.CharField("definição", max_length=220, blank=True)
@@ -153,6 +155,10 @@ class Variavel(models.Model):
     def __str__(self):
         return self.nome
 
+    @property
+    def rotulo(self):
+        return self.nome_curto or self.nome
+
     def save(self, *args, **kwargs):
         self.busca = self.texto_de_busca(self.nome, self.codigo)
         super().save(*args, **kwargs)
@@ -182,3 +188,19 @@ class Variavel(models.Model):
 
         if self.tipo == self.Tipo.ORDINAL and self.dominio_id and not self.dominio.ordinal:
             raise ValidationError({"dominio": "Variável ordinal exige domínio marcado como ordinal."})
+
+
+class SinonimoVariavel(models.Model):
+    variavel = models.ForeignKey(Variavel, on_delete=models.CASCADE, related_name="sinonimos")
+    termo = models.CharField("termo", max_length=80)
+
+    class Meta:
+        verbose_name = "sinônimo"
+        verbose_name_plural = "sinônimos"
+        ordering = ["variavel", "termo"]
+        constraints = [
+            models.UniqueConstraint(fields=["variavel", "termo"], name="sinonimo_unico_por_variavel"),
+        ]
+
+    def __str__(self):
+        return self.termo

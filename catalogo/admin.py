@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Categoria, Dominio, OpcaoDominio, Subcategoria, Variavel
+from .models import Categoria, Dominio, OpcaoDominio, SinonimoVariavel, Subcategoria, Variavel
 
 
 class SubcategoriaInline(admin.TabularInline):
@@ -11,6 +11,11 @@ class SubcategoriaInline(admin.TabularInline):
 class OpcaoInline(admin.TabularInline):
     model = OpcaoDominio
     extra = 0
+
+
+class SinonimoInline(admin.TabularInline):
+    model = SinonimoVariavel
+    extra = 1
 
 
 @admin.register(Categoria)
@@ -31,3 +36,4 @@ class VariavelAdmin(admin.ModelAdmin):
     list_filter = ("tipo", "derivada", "sensivel", "subcategoria__categoria")
     search_fields = ("codigo", "nome")
     filter_horizontal = ("origem",)
+    inlines = [SinonimoInline]
