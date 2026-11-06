@@ -15,9 +15,19 @@
     var ultimaBusca = "";
     var ultimaPrevia = "";
 
+    // Sessão vencida ou token antigo: a resposta seria a tela de login ou a
+    // página de erro, que não pode entrar no meio da tela. Recarregar resolve.
+    function recarregarSeFalhou(resposta) {
+        if (resposta.redirected || (!resposta.ok && resposta.status !== 422)) {
+            window.location.reload();
+            return true;
+        }
+        return false;
+    }
+
     function pegar(endereco) {
         return fetch(endereco).then(function (resposta) {
-            return resposta.text();
+            return recarregarSeFalhou(resposta) ? "" : resposta.text();
         });
     }
 
@@ -137,6 +147,9 @@
         form.addEventListener("submit", function (evento) {
             evento.preventDefault();
             fetch(form.action, { method: "POST", body: new FormData(form) }).then(function (resposta) {
+                if (recarregarSeFalhou(resposta)) {
+                    return;
+                }
                 return resposta.text().then(function (html) {
                     if (resposta.ok) {
                         regras.innerHTML = html;
@@ -158,11 +171,13 @@
         evento.preventDefault();
         fetch(form.action, { method: "POST", body: new FormData(form) })
             .then(function (resposta) {
-                return resposta.text();
+                return recarregarSeFalhou(resposta) ? "" : resposta.text();
             })
             .then(function (html) {
-                regras.innerHTML = html;
-                regras.focus();
+                if (html) {
+                    regras.innerHTML = html;
+                    regras.focus();
+                }
             });
     });
 
