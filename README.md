@@ -135,4 +135,6 @@ pytest, com os testes em arquivos `teste_*.py`.
 
 Os testes rodam no PostgreSQL do container, que precisa estar no ar. O pytest cria e descarta um banco de teste à parte, sem tocar nos dados de desenvolvimento.
 
-A tela de critérios ainda não tem testes automatizados. Cadastro, login e as demais telas de estudo também estão sem testes.
+Os testes cobrem a busca do catálogo (sinônimo, acento, erro de digitação, variáveis que ficam fora), a frase de cada tipo de critério e do resumo do estudo, a validação de critério incompleto e a tela de critérios de ponta a ponta: configuração, prévia, adicionar e remover. O controle de acesso tem testes próprios, que confirmam o 403 para o profissional, o 404 para o estudo de outra pesquisadora e o redirecionamento do visitante, em todas as rotas da tela.
+
+Ainda sem testes: cadastro, login, confirmação de email, gestão de usuários e as telas de lista e edição de estudo. A avaliação de um participante contra os critérios depende do cadastro de voluntários, que não existe.
