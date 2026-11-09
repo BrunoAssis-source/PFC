@@ -57,8 +57,14 @@ def test_variavel_de_texto_livre_fica_fora():
 
 
 def test_variavel_categorica_sem_dominio_fica_fora():
-    # A ocupação depende de uma tabela da CBO que não existe no sistema.
-    assert "Ocupação" not in rotulos("profissão")
+    categoria = Categoria.objects.create(codigo="TST", nome="Teste", ordem=9)
+    subcategoria = Subcategoria.objects.create(categoria=categoria, codigo="REF", nome="Referência", ordem=1)
+    Variavel.objects.create(
+        subcategoria=subcategoria, codigo="cargo_na_tabela", nome="Cargo na tabela", tipo=Variavel.Tipo.NOMINAL,
+        tabela_referencia="cbo",
+    )
+
+    assert rotulos("cargo na tabela") == []
 
 
 def test_sinonimo_novo_passa_a_valer():
@@ -102,3 +108,39 @@ def test_variaveis_sensiveis_do_catalogo():
     sensiveis = set(Variavel.objects.filter(sensivel=True).values_list("codigo", flat=True))
 
     assert sensiveis == {"identidade_genero", "orientacao_sexual", "raca_cor", "pessoa_com_deficiencia"}
+
+
+def test_situacao_e_area_de_trabalho_tem_nomes_distintos():
+    assert Variavel.objects.get(codigo="situacao_ocupacional").rotulo == "Situação de trabalho"
+    assert Variavel.objects.get(codigo="ocupacao").rotulo == "Área de atuação profissional"
+
+
+@pytest.mark.parametrize(
+    "termo, esperado",
+    [
+        ("emprego", "Situação de trabalho"),
+        ("situação ocupacional", "Situação de trabalho"),
+        ("profissão", "Área de atuação profissional"),
+        ("ocupação exercida", "Área de atuação profissional"),
+        ("ramo de atividade", "Área de atuação profissional"),
+    ],
+)
+def test_busca_pelo_termo_antigo_ou_pelo_sinonimo_acha_a_variavel_certa(termo, esperado):
+    assert esperado in rotulos(termo)
+
+
+def test_ocupacao_leva_as_duas_variaveis_para_o_pesquisador_escolher():
+    assert {"Situação de trabalho", "Área de atuação profissional"} <= set(rotulos("ocupação"))
+
+
+def test_situacao_de_trabalho_nao_e_achada_pela_profissao():
+    assert "Situação de trabalho" not in rotulos("profissão")
+
+
+def test_area_de_atuacao_e_uma_lista_fechada_sem_texto_livre():
+    area = Variavel.objects.get(codigo="ocupacao")
+
+    assert area.tipo == Variavel.Tipo.NOMINAL
+    assert area.dominio.opcoes.count() == 19
+    assert {"Saúde", "Educação", "Outra"} <= set(area.dominio.opcoes.values_list("rotulo", flat=True))
+    assert area.tabela_referencia == ""

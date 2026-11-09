@@ -74,7 +74,7 @@ def test_configuracao_muda_conforme_o_tipo(cliente, estudo, codigo, trecho):
     assert trecho in resposta.content.decode()
 
 
-@pytest.mark.parametrize("codigo", ["data_nascimento", "faixa_etaria", "ocupacao"])
+@pytest.mark.parametrize("codigo", ["data_nascimento", "faixa_etaria"])
 def test_variavel_fora_do_seletor_nao_abre_configuracao(cliente, estudo, codigo):
     resposta = cliente.get(endereco("configurar_criterio", estudo, variavel(codigo).id))
 
