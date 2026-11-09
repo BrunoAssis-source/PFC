@@ -1,0 +1,44 @@
+{% extends "autenticacao/base_autenticacao.html" %}
+{% block title %}Reenviar confirmação | UniData{% endblock %}
+{% block rotulo %}Novo acesso{% endblock %}
+{% block cabecalho %}Reenviar confirmação{% endblock %}
+{% block texto %}Informe o email do cadastro para receber um link novo.{% endblock %}
+{% block corpo_cartao %}
+<form method="post">
+    {% csrf_token %}
+    <div class="mb-3">
+        <label class="form-label" for="id_email">Email</label>
+        {{ form.email }}
+        {% for error in form.email.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+    </div>
+    {% if espera %}
+        <div class="alert alert-warning" id="aviso-espera" role="status">
+            Você pediu um envio há pouco. Aguarde <strong id="segundos-espera">{{ espera }}</strong>s para pedir outro.
+        </div>
+    {% endif %}
+    <button class="acesso-botao" id="botao-envio" type="submit"{% if espera %} disabled{% endif %}>Enviar link</button>
+</form>
+<div class="acesso-links">
+    <a href="{% url 'login' %}">Voltar para o login</a>
+</div>
+{% if espera %}
+<script>
+    (function () {
+        var aviso = document.getElementById("aviso-espera");
+        var numero = document.getElementById("segundos-espera");
+        var botao = document.getElementById("botao-envio");
+        var fim = Date.now() + {{ espera }} * 1000;
+        var relogio = setInterval(function () {
+            var restante = Math.ceil((fim - Date.now()) / 1000);
+            if (restante <= 0) {
+                clearInterval(relogio);
+                aviso.hidden = true;
+                botao.disabled = false;
+            } else {
+                numero.textContent = restante;
+            }
+        }, 250);
+    })();
+</script>
+{% endif %}
+{% endblock %}

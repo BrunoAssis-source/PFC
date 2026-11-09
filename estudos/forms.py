@@ -1,20 +1,27 @@
-import calendar
-import datetime
-
 from django import forms
+from django.core.exceptions import ValidationError
 
 from autenticacao.forms import EstiloBootstrapMixin
-from catalogo.models import OpcaoDominio, Operador, Variavel, normalizar
+from catalogo.models import Operador, Variavel, normalizar
 
 from .models import Criterio, Estudo
 
-CAMPOS_POR_TIPO = {
-    Variavel.Tipo.NUMERICA: ("valor_numero", "valor_numero_ate"),
-    # A data é montada por ano, mês e dia, conforme a precisão escolhida.
-    Variavel.Tipo.DATA: (),
-    Variavel.Tipo.NOMINAL: ("opcoes",),
-    Variavel.Tipo.ORDINAL: ("opcoes",),
-    Variavel.Tipo.BOOLEANA: (),
+# Operadores que a tela de critérios oferece em cada tipo, com o rótulo do botão.
+# O modelo aceita mais combinações, mas o pesquisador escolhe entre estas.
+OPERADORES_DA_TELA = {
+    Variavel.Tipo.NUMERICA: (
+        (Operador.ENTRE, "entre"),
+        (Operador.MAIOR_IGUAL, "pelo menos"),
+        (Operador.MENOR_IGUAL, "no máximo"),
+        (Operador.IGUAL, "exatamente"),
+    ),
+    Variavel.Tipo.ORDINAL: (
+        (Operador.MAIOR_IGUAL, "a partir de"),
+        (Operador.MENOR_IGUAL, "até"),
+        (Operador.E, "exatamente"),
+    ),
+    Variavel.Tipo.NOMINAL: ((Operador.ESTA_EM, "está em"),),
+    Variavel.Tipo.BOOLEANA: ((Operador.VERDADEIRO, "Sim"), (Operador.FALSO, "Não")),
 }
 
 
@@ -30,117 +37,97 @@ class EstudoForm(EstiloBootstrapMixin, forms.ModelForm):
         }
 
 
-class CriterioForm(EstiloBootstrapMixin, forms.ModelForm):
+class CriterioForm(forms.ModelForm):
     class Meta:
         model = Criterio
-        fields = ("operador", "valor_numero", "valor_numero_ate", "opcoes")
-        widgets = {
-            "opcoes": forms.SelectMultiple(attrs={"size": 6}),
-        }
+        fields = ("tipo_regra", "operador", "valor_numero", "valor_numero_ate", "opcoes")
+        widgets = {"opcoes": forms.CheckboxSelectMultiple}
+        error_messages = {"operador": {"required": "Escolha como comparar."}}
 
     def __init__(self, *args, variavel, **kwargs):
         self.variavel = variavel
         super().__init__(*args, **kwargs)
 
-        self.fields["operador"].choices = [
-            (operador.value, operador.label) for operador in variavel.operadores
-        ]
+        self.operadores = OPERADORES_DA_TELA[variavel.tipo]
+        self.fields["operador"].choices = [(operador.value, rotulo) for operador, rotulo in self.operadores]
+        if variavel.tipo == Variavel.Tipo.BOOLEANA:
+            self.fields["operador"].error_messages["required"] = "Escolha sim ou não."
 
-        manter = CAMPOS_POR_TIPO[variavel.tipo]
-        for nome in list(self.fields):
-            if nome != "operador" and nome not in manter:
-                del self.fields[nome]
-
-        if "opcoes" in self.fields:
-            self.fields["opcoes"].queryset = (
-                variavel.dominio.opcoes.all() if variavel.dominio_id else OpcaoDominio.objects.none()
-            )
-            self.fields["opcoes"].label = "Valor de referência"
-            self.fields["opcoes"].help_text = "Escolha um valor."
-
-        if variavel.tipo == Variavel.Tipo.DATA:
-            self.montar_campos_de_data()
-
-        if "valor_numero" in self.fields:
-            faixa = ""
-            if variavel.minimo is not None:
-                faixa = f", de {variavel.minimo:.0f} a {variavel.maximo:.0f}"
-            self.fields["valor_numero"].label = "Valor de referência"
-            self.fields["valor_numero"].help_text = f"Em {variavel.unidade}{faixa}."
-
-        if "valor_numero_ate" in self.fields:
-            self.fields["valor_numero_ate"].label = "Segundo valor"
-            self.fields["valor_numero_ate"].help_text = "Usado apenas pelo operador entre."
+        if variavel.tipo != Variavel.Tipo.NUMERICA:
+            del self.fields["valor_numero"], self.fields["valor_numero_ate"]
+        if variavel.tipo in (Variavel.Tipo.NOMINAL, Variavel.Tipo.ORDINAL):
+            self.fields["opcoes"].queryset = variavel.dominio.opcoes.all()
+        else:
+            del self.fields["opcoes"]
 
     def clean(self):
         dados = super().clean()
+        # A ModelForm só copia os campos para a instância depois do clean, e a
+        # validação das opções precisa deles agora.
         self.instance.variavel = self.variavel
-        if self.variavel.tipo == Variavel.Tipo.DATA:
-            self.resolver_datas(dados)
+        self.instance.operador = dados.get("operador", "")
+        if "opcoes" in self.fields and "operador" in dados:
+            escolhidas = list(dados.get("opcoes") or [])
+            self.instance.opcoes_em_memoria = escolhidas
+            try:
+                self.instance.validar_opcoes()
+            except ValidationError as erro:
+                self.add_error(None, erro)
+            else:
+                self.recusar_todas_as_opcoes(dados, escolhidas)
+        if not self.errors:
+            self.recusar_duplicado(dados)
         return dados
 
-    def resolver_datas(self, dados):
-        precisao = dados.get("precisao") or Criterio.Precisao.DIA
-        self.instance.precisao = precisao
-        operador = dados.get("operador")
-
-        # Antes de recorta o começo do período, depois de recorta o fim.
-        try:
-            self.instance.valor_data = self.limite(dados, "", precisao, operador == Operador.DEPOIS)
-            if operador == Operador.ENTRE:
-                self.instance.valor_data_ate = self.limite(dados, "_ate", precisao, True)
-        except forms.ValidationError as erro:
-            self.add_error(None, erro)
-
-    def montar_campos_de_data(self):
-        self.fields["precisao"] = forms.ChoiceField(
-            label="Precisão da data",
-            choices=Criterio.Precisao.choices,
-            initial=Criterio.Precisao.DIA,
+    def recusar_duplicado(self, dados):
+        """Mesma variável, regra, condição e valores que outro critério do estudo."""
+        if not self.instance.estudo_id or "operador" not in dados:
+            return
+        operador = dados["operador"]
+        # O segundo valor só conta no "entre"; nas outras condições ele é resíduo.
+        ate = dados.get("valor_numero_ate") if operador == Operador.ENTRE else None
+        escolhidas = {opcao.pk for opcao in dados.get("opcoes") or []}
+        existentes = (
+            Criterio.objects.filter(
+                estudo_id=self.instance.estudo_id, variavel=self.variavel,
+                tipo_regra=dados["tipo_regra"], operador=operador,
+            )
+            .exclude(pk=self.instance.pk)
+            .prefetch_related("opcoes")
         )
-        for sufixo, rotulo in (("", "Data de referência"), ("_ate", "Segunda data")):
-            self.fields["data" + sufixo] = forms.DateField(
-                label=rotulo,
-                required=False,
-                widget=forms.DateInput(attrs={"type": "date"}),
-            )
-            self.fields["mes_ano" + sufixo] = forms.DateField(
-                label=f"{rotulo}, mês e ano",
-                required=False,
-                input_formats=["%Y-%m"],
-                widget=forms.DateInput(attrs={"type": "month"}, format="%Y-%m"),
-            )
-            self.fields["ano" + sufixo] = forms.IntegerField(
-                label=f"{rotulo}, ano",
-                required=False,
-                min_value=1900,
-                max_value=2100,
-                widget=forms.NumberInput(attrs={"placeholder": "aaaa"}),
-            )
-        for nome in ("precisao", "data", "mes_ano", "ano", "data_ate", "mes_ano_ate", "ano_ate"):
-            campo = self.fields[nome]
-            campo.widget.attrs["class"] = self.classe_do_widget(campo.widget)
+        for existente in existentes:
+            mesmo_ate = (existente.valor_numero_ate if operador == Operador.ENTRE else None) == ate
+            if (
+                existente.valor_numero == dados.get("valor_numero")
+                and mesmo_ate
+                and {opcao.pk for opcao in existente.opcoes.all()} == escolhidas
+            ):
+                self.add_error(None, "Este critério já existe neste estudo.")
+                return
 
-    def limite(self, dados, sufixo, precisao, fim):
-        if precisao == Criterio.Precisao.ANO:
-            ano = dados.get("ano" + sufixo)
-            if not ano:
-                raise forms.ValidationError("Informe o ano.")
-            return datetime.date(ano, 12, 31) if fim else datetime.date(ano, 1, 1)
+    def recusar_todas_as_opcoes(self, dados, escolhidas):
+        # Um critério que cobre todas as opções não restringe ninguém: na inclusão
+        # aceita todo mundo, na exclusão barra todo mundo.
+        if not self.cobre_todas_as_opcoes(dados["operador"], escolhidas):
+            return
+        verbo = "exclui" if dados.get("tipo_regra") == Criterio.TipoRegra.EXCLUSAO else "inclui"
+        self.add_error("opcoes", f"Esse critério {verbo} todos os participantes.")
 
-        if precisao == Criterio.Precisao.MES:
-            mes_ano = dados.get("mes_ano" + sufixo)
-            if not mes_ano:
-                raise forms.ValidationError("Informe o mês e o ano.")
-            if not fim:
-                return mes_ano.replace(day=1)
-            return mes_ano.replace(day=calendar.monthrange(mes_ano.year, mes_ano.month)[1])
+    def cobre_todas_as_opcoes(self, operador, escolhidas):
+        niveis = self.fields["opcoes"].queryset
+        if self.variavel.tipo != Variavel.Tipo.ORDINAL:
+            return operador == Operador.ESTA_EM and len(escolhidas) == niveis.count()
 
-        data = dados.get("data" + sufixo)
-        if not data:
-            raise forms.ValidationError("Escolha a data no calendário.")
-        return data
+        # Na escala, um nível só já cobre tudo quando é "a partir do mais baixo"
+        # ou "até o mais alto".
+        ordem = [nivel.pk for nivel in niveis.order_by("ordem")]
+        if operador == Operador.MAIOR_IGUAL:
+            return escolhidas[0].pk == ordem[0]
+        return operador == Operador.MENOR_IGUAL and escolhidas[0].pk == ordem[-1]
 
+    def pendencia(self):
+        for erros in self.errors.values():
+            return erros[0]
 
 
 class VariavelPropostaForm(EstiloBootstrapMixin, forms.ModelForm):
@@ -150,8 +137,12 @@ class VariavelPropostaForm(EstiloBootstrapMixin, forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # Texto livre não serve de critério, e data o pesquisador não informa: a
+        # idade em anos já vem do que o voluntário registrar.
         self.fields["tipo"].choices = [
-            (valor, rotulo) for valor, rotulo in Variavel.Tipo.choices if valor != Variavel.Tipo.TEXTO
+            (valor, rotulo)
+            for valor, rotulo in Variavel.Tipo.choices
+            if valor not in (Variavel.Tipo.TEXTO, Variavel.Tipo.DATA)
         ]
         self.fields["unidade"].help_text = "Obrigatória para variável numérica."
         self.fields["vida_util_dias"].help_text = "Em branco significa permanente."

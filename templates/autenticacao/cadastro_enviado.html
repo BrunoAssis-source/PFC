@@ -1,0 +1,57 @@
+{% extends "autenticacao/base_autenticacao.html" %}
+{% block title %}Confirme seu email | UniData{% endblock %}
+{% block rotulo %}Novo acesso{% endblock %}
+{% block cabecalho %}Confirme seu email{% endblock %}
+{% block texto %}Use o botão do email que enviamos ou digite abaixo o código recebido.{% endblock %}
+{% block corpo_cartao %}
+{% if email %}
+    <div class="envio-destino">
+        <div>
+            <span class="envio-destino-rotulo">Enviado para</span>
+            <strong>{{ email }}</strong>
+        </div>
+        <a href="{% url 'reenviar_confirmacao' %}">Corrigir</a>
+    </div>
+{% endif %}
+<form method="post">
+    {% csrf_token %}
+    {% for field in form %}
+        <div class="mb-3">
+            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+        </div>
+    {% endfor %}
+    <button class="acesso-botao" type="submit">Confirmar com o código</button>
+</form>
+<div class="acesso-links">
+    <a href="{% url 'login' %}">Voltar para o login</a>
+    {% if espera %}
+        <span class="contador-reenvio" id="contador-reenvio" data-segundos="{{ espera }}" aria-live="polite">Reenviar em <strong>{{ espera }}</strong>s</span>
+        <a id="link-reenvio" href="{% url 'reenviar_confirmacao' %}" hidden>Reenviar confirmação</a>
+    {% else %}
+        <a href="{% url 'reenviar_confirmacao' %}">Reenviar confirmação</a>
+    {% endif %}
+</div>
+<p class="acesso-aviso">Um novo envio cancela o código e o link anteriores. O intervalo entre pedidos é de 60 segundos, com limite de 5 por hora.</p>
+{% if espera %}
+<script>
+    (function () {
+        var contador = document.getElementById("contador-reenvio");
+        var numero = contador.querySelector("strong");
+        var link = document.getElementById("link-reenvio");
+        var fim = Date.now() + parseInt(contador.dataset.segundos, 10) * 1000;
+        var relogio = setInterval(function () {
+            var restante = Math.ceil((fim - Date.now()) / 1000);
+            if (restante <= 0) {
+                clearInterval(relogio);
+                contador.hidden = true;
+                link.hidden = false;
+            } else {
+                numero.textContent = restante;
+            }
+        }, 250);
+    })();
+</script>
+{% endif %}
+{% endblock %}

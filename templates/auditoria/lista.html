@@ -1,0 +1,49 @@
+{% extends "painel.html" %}
+{% block title %}Auditoria | UniData{% endblock %}
+{% block content %}
+<div class="painel-cabecalho">
+    <div>
+        <p class="painel-rotulo">Administração</p>
+        <h1 class="painel-titulo">Auditoria</h1>
+    </div>
+</div>
+
+<div class="painel-secao">
+    <h2 class="painel-secao-titulo">Eventos registrados</h2>
+    <span class="painel-secao-contagem">{{ pagina.paginator.count }} registro{{ pagina.paginator.count|pluralize }}</span>
+</div>
+
+<div class="painel-lista">
+    {% for registro in pagina %}
+        <div class="painel-linha">
+            <span class="painel-linha-icone" aria-hidden="true">
+                {% include "icones/icone.html" with nome="auditoria" tamanho=20 %}
+            </span>
+            <span class="painel-linha-texto">
+                <strong>{{ registro.get_acao_display }}</strong>
+                <span class="painel-linha-sub">
+                    {{ registro.usuario.nome_completo|default:registro.email_tentativa|default:"anônimo" }}{% if registro.objeto %} · {{ registro.objeto }}{% endif %}
+                </span>
+            </span>
+            <span class="painel-linha-contagem">{{ registro.ip|default:"—" }}</span>
+            <span class="painel-linha-contagem">{{ registro.criado_em|date:"d/m/Y H:i" }}</span>
+        </div>
+    {% empty %}
+        <p class="painel-vazio">Nenhum evento registrado ainda.</p>
+    {% endfor %}
+</div>
+
+{% if pagina.has_other_pages %}
+    <nav aria-label="Paginação" class="mt-3">
+        <ul class="pagination pagination-sm">
+            {% if pagina.has_previous %}
+                <li class="page-item"><a class="page-link" href="?pagina={{ pagina.previous_page_number }}">Anterior</a></li>
+            {% endif %}
+            <li class="page-item disabled"><span class="page-link">Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span></li>
+            {% if pagina.has_next %}
+                <li class="page-item"><a class="page-link" href="?pagina={{ pagina.next_page_number }}">Próxima</a></li>
+            {% endif %}
+        </ul>
+    </nav>
+{% endif %}
+{% endblock %}

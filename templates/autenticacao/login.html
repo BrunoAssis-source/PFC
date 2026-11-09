@@ -5,7 +5,16 @@
 {% block corpo_cartao %}
 <form method="post">
     {% csrf_token %}
-    {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+    {% if form.non_field_errors %}
+        <div class="alert alert-danger">
+            {% for erro in form.non_field_errors %}<p class="mb-0">{{ erro }}</p>{% endfor %}
+            {% if form.email_nao_confirmado %}
+                <div class="alerta-acoes">
+                    <a class="alert-link" href="{% url 'reenviar_confirmacao' %}">Reenviar o email de confirmação</a>
+                </div>
+            {% endif %}
+        </div>
+    {% endif %}
     <div class="mb-3">
         <label class="form-label" for="id_username">Email</label>
         {{ form.username }}
@@ -20,6 +29,5 @@
 </form>
 <div class="acesso-links">
     <a href="{% url 'senha_reset' %}">Esqueci minha senha</a>
-    <a href="{% url 'cadastro' %}">Criar cadastro</a>
-</div>
+    <a href="{% url 'cadastro' %}">Criar cadastro</a></div>
 {% endblock %}

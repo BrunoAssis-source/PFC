@@ -7,6 +7,9 @@ venv/
 .env
 db.sqlite3
 staticfiles/
+.pytest_cache/
 
 .vscode/
 .idea/
+
+CLAUDE.md

@@ -1,0 +1,7 @@
+<div data-completo="{{ completo|yesno:'1,0' }}">
+    {% if completo %}
+        <p class="previa-frase">{{ frase }}.</p>
+    {% else %}
+        <p class="previa-aviso">{{ pendencia|default:"Defina a condição." }}</p>
+    {% endif %}
+</div>

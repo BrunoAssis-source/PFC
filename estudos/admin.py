@@ -12,5 +12,5 @@ class EstudoAdmin(admin.ModelAdmin):
 
 @admin.register(Criterio)
 class CriterioAdmin(admin.ModelAdmin):
-    list_display = ("estudo", "variavel", "operador")
-    list_filter = ("operador", "variavel__subcategoria")
+    list_display = ("estudo", "tipo_regra", "variavel", "operador")
+    list_filter = ("tipo_regra", "operador", "variavel__subcategoria")

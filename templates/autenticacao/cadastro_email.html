@@ -1,0 +1,39 @@
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f7f9;padding:24px 12px;font-family:Arial,Helvetica,sans-serif;">
+    <tr>
+        <td align="center">
+            <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="width:100%;max-width:560px;background-color:#ffffff;border-radius:8px;overflow:hidden;">
+                <tr>
+                    <td style="background-color:#145da0;padding:20px 32px;">
+                        <span style="color:#ffffff;font-size:18px;font-weight:bold;letter-spacing:.5px;">UniData</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding:32px;color:#17202a;font-size:15px;line-height:1.6;">
+                        <p style="margin:0 0 16px;">Olá, {{ usuario.nome_completo }}.</p>
+                        <p style="margin:0 0 24px;">Recebemos um cadastro no UniData com este email. Use o botão abaixo para ativar a conta.</p>
+                        <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
+                            <tr>
+                                <td style="background-color:#145da0;border-radius:6px;">
+                                    <a href="{{ link }}"
+                                       style="display:inline-block;padding:12px 28px;color:#ffffff;font-size:15px;font-weight:bold;text-decoration:none;">Confirmar cadastro</a>
+                                </td>
+                            </tr>
+                        </table>
+                        <p style="margin:0 0 8px;color:#5a6673;font-size:13px;">Se o botão não funcionar, copie o endereço abaixo no navegador:</p>
+                        <p style="margin:0 0 24px;font-size:13px;word-break:break-all;">
+                            <a href="{{ link }}" style="color:#145da0;">{{ link }}</a>
+                        </p>
+                        <p style="margin:0 0 8px;color:#5a6673;font-size:13px;">Se o link não abrir, volte à tela de cadastro do UniData e digite este código:</p>
+                        <p style="margin:0 0 24px;font-size:22px;font-weight:bold;letter-spacing:3px;color:#17202a;">{{ codigo }}</p>
+                        <p style="margin:0;color:#5a6673;font-size:13px;">O código vale por 30 minutos e o link por 3 dias. Pedir um novo envio cancela o código e o link anteriores. A conta só fica ativa depois da confirmação. Se você não fez o cadastro, ignore esta mensagem e nada será ativado.</p>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="border-top:1px solid #e3e9ee;padding:20px 32px;color:#8a94a0;font-size:12px;line-height:1.5;">
+                        Mensagem automática do UniData, sistema de apoio à coleta de dados de pesquisa da Universidade de Mogi das Cruzes. Não responda este email.
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>

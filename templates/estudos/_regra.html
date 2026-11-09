@@ -1,0 +1,13 @@
+<li class="regra">
+    <span class="regra-texto">{{ criterio.descricao }}</span>
+    <div class="regra-acoes">
+        <button type="button" class="regra-editar" data-url="{% url 'estudos:editar_criterio' estudo.id criterio.id %}" aria-label="Editar critério: {{ criterio.descricao }}">Editar</button>
+        <button type="button" class="regra-remover" data-pedir-remocao aria-label="Remover critério: {{ criterio.descricao }}">×</button>
+    </div>
+    <form method="post" class="remover-criterio regra-confirmacao" action="{% url 'estudos:remover_criterio' estudo.id criterio.id %}" hidden>
+        {% csrf_token %}
+        <span>Remover este critério?</span>
+        <button type="submit" class="regra-sim">Sim, remover</button>
+        <button type="button" class="regra-nao" data-cancelar-remocao>Não</button>
+    </form>
+</li>
