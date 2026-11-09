@@ -147,6 +147,11 @@ class Variavel(models.Model):
 
     definicao = models.CharField("definição", max_length=220, blank=True)
 
+    # Só para variável sim ou não cujo nome não cabe em "com <nome>: sim", como
+    # "com deficiência" e "sem deficiência". Vazios usam a frase padrão.
+    texto_sim = models.CharField("texto da resposta sim", max_length=80, blank=True)
+    texto_nao = models.CharField("texto da resposta não", max_length=80, blank=True)
+
     unidade = models.CharField("unidade canônica", max_length=30, blank=True)
     minimo = models.DecimalField("mínimo plausível", max_digits=12, decimal_places=2, null=True, blank=True)
     maximo = models.DecimalField("máximo plausível", max_digits=12, decimal_places=2, null=True, blank=True)

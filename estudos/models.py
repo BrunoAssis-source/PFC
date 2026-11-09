@@ -47,7 +47,9 @@ class Estudo(models.Model):
         partes = []
         for regras, abertura in ((inclusao, "Serão incluídos"), (exclusao, "Serão excluídos")):
             if regras:
-                partes.append(f"{abertura} participantes com {'; '.join(c.descricao for c in regras)}.")
+                # O texto próprio de uma resposta já traz "com" ou "sem".
+                com = "" if regras[0].resposta_propria else "com "
+                partes.append(f"{abertura} participantes {com}{'; '.join(c.descricao for c in regras)}.")
         return " ".join(partes)
 
     @property
@@ -112,11 +114,23 @@ class Criterio(models.Model):
     @property
     def frase(self):
         verbo = self.TipoRegra(self.tipo_regra).label
+        if self.resposta_propria:
+            return f"{verbo} participantes {self.descricao}"
         return f"{verbo} participantes com {self.descricao}"
+
+    @property
+    def resposta_propria(self):
+        if self.operador == Operador.VERDADEIRO:
+            return self.variavel.texto_sim
+        if self.operador == Operador.FALSO:
+            return self.variavel.texto_nao
+        return ""
 
     @property
     def descricao(self):
         """Variável e condição, como aparecem na lista de regras e no resumo do estudo."""
+        if self.resposta_propria:
+            return self.resposta_propria
         condicao = self.condicao
         separador = "" if condicao.startswith(":") else " "
         return f"{self.variavel.rotulo.lower()}{separador}{condicao}"
