@@ -1,3 +1,3 @@
 {% for opcao in opcoes %}
-    <label class="escolha"><input type="checkbox" value="{{ opcao.pk }}"><span>{{ opcao.rotulo }}</span></label>
+    <label class="escolha"><input type="{{ tipo|default:"checkbox" }}" value="{{ opcao.pk }}"><span>{{ opcao.rotulo }}</span></label>
 {% endfor %}

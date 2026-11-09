@@ -60,33 +60,8 @@
 
     {% elif variavel.tipo == "nominal" and variavel.dominio.superior_id %}
         <input type="hidden" name="operador" value="esta_em">
-        <fieldset class="config-grupo" data-cascata data-opcoes-url="{% url 'estudos:opcoes_filhas' estudo.id variavel.id %}">
-            <legend>Estado e município</legend>
-            <label class="form-label" for="cascata-pai">Primeiro o estado</label>
-            <select id="cascata-pai" class="form-select">
-                <option value="">Escolha o estado</option>
-                {% for estado in variavel.dominio.superior.opcoes.all %}
-                    <option value="{{ estado.pk }}">{{ estado.rotulo }}</option>
-                {% endfor %}
-            </select>
-            <label class="form-label mt-3" for="cascata-filtro">Depois os municípios</label>
-            <input type="search" id="cascata-filtro" class="form-control" placeholder="Filtrar pelo nome" autocomplete="off" disabled>
-            <div id="cascata-lista" class="escolhas caixas cascata-lista"></div>
-            <div class="config-cabeca mt-3">
-                <p class="previa-rotulo m-0">Escolhidos</p>
-                <div class="opcoes-botoes"><button type="button" data-limpar-cascata>Limpar</button></div>
-            </div>
-            <div id="cascata-escolhidos" class="cascata-escolhidos">
-                {% for opcao in selecionadas %}
-                    <span class="etiqueta">
-                        <input type="hidden" name="opcoes" value="{{ opcao.pk }}">
-                        <span>{{ opcao.rotulo }}</span>
-                        <button type="button" aria-label="Remover {{ opcao.rotulo }}">×</button>
-                    </span>
-                {% endfor %}
-            </div>
-            <p id="cascata-vazio" class="regras-vazio" {% if selecionadas %}hidden{% endif %}>Nenhum município escolhido.</p>
-        </fieldset>
+        {% url 'estudos:opcoes_filhas' estudo.id variavel.id as url_filhas %}
+        {% include "estudos/_cascata.html" with url=url_filhas estados=variavel.dominio.superior.opcoes.all selecionadas=selecionadas %}
 
     {% elif variavel.tipo == "nominal" %}
         <input type="hidden" name="operador" value="esta_em">
