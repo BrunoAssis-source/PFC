@@ -8,6 +8,7 @@ from .views import (
     criterios,
     detalhe,
     editar,
+    editar_criterio,
     listar,
     opcoes_filhas,
     previa_criterio,
@@ -29,5 +30,6 @@ urlpatterns = [
     path("<int:id>/criterios/variavel/<int:variavel_id>/opcoes/", opcoes_filhas, name="opcoes_filhas"),
     path("<int:id>/criterios/variavel/<int:variavel_id>/previa/", previa_criterio, name="previa_criterio"),
     path("<int:id>/criterios/variavel/<int:variavel_id>/adicionar/", adicionar_criterio, name="adicionar_criterio"),
+    path("<int:id>/criterios/<int:criterio_id>/editar/", editar_criterio, name="editar_criterio"),
     path("<int:id>/criterios/<int:criterio_id>/remover/", remover_criterio, name="remover_criterio"),
 ]

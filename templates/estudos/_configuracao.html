@@ -1,7 +1,7 @@
-{% load l10n %}
 <form id="form-criterio" method="post"
-      action="{% url 'estudos:adicionar_criterio' estudo.id variavel.id %}"
-      data-previa-url="{% url 'estudos:previa_criterio' estudo.id variavel.id %}">
+      action="{% if criterio %}{% url 'estudos:editar_criterio' estudo.id criterio.id %}{% else %}{% url 'estudos:adicionar_criterio' estudo.id variavel.id %}{% endif %}"
+      data-previa-url="{% url 'estudos:previa_criterio' estudo.id variavel.id %}"
+      {% if criterio %}data-modo="edicao"{% endif %}>
     {% csrf_token %}
     <p class="config-caminho">{{ variavel.caminho }}</p>
     <h2 class="config-titulo">{{ variavel.rotulo }}</h2>
@@ -9,12 +9,15 @@
         Tipo: {{ variavel.tipo_resumido }}{% if variavel.faixa %}, {{ variavel.faixa }}{% endif %}.
         {% if variavel.definicao %}{{ variavel.definicao }}{% endif %}
     </p>
+    {% if criterio %}
+        <p class="config-edicao">Você está editando um critério do estudo. A variável não muda: para usar outra, remova este critério e adicione um novo.</p>
+    {% endif %}
 
     <fieldset class="config-grupo">
         <legend>Este critério serve para</legend>
         <div class="escolhas">
-            <label class="escolha"><input type="radio" name="tipo_regra" value="inclusao" checked><span>Incluir quem atende</span></label>
-            <label class="escolha"><input type="radio" name="tipo_regra" value="exclusao"><span>Excluir quem atende</span></label>
+            <label class="escolha"><input type="radio" name="tipo_regra" value="inclusao" {% if not criterio or criterio.tipo_regra == "inclusao" %}checked{% endif %}><span>Incluir quem atende</span></label>
+            <label class="escolha"><input type="radio" name="tipo_regra" value="exclusao" {% if criterio.tipo_regra == "exclusao" %}checked{% endif %}><span>Excluir quem atende</span></label>
         </div>
     </fieldset>
 
@@ -23,16 +26,16 @@
             <legend>Condição</legend>
             <div class="escolhas">
                 {% for valor, rotulo in form.fields.operador.choices %}
-                    <label class="escolha"><input type="radio" name="operador" value="{{ valor }}" {% if forloop.first %}checked{% endif %}><span>{{ rotulo }}</span></label>
+                    <label class="escolha"><input type="radio" name="operador" value="{{ valor }}" {% if criterio %}{% if valor == criterio.operador %}checked{% endif %}{% elif forloop.first %}checked{% endif %}><span>{{ rotulo }}</span></label>
                 {% endfor %}
             </div>
         </fieldset>
         <div class="config-grupo valores">
             <label><span data-rotulo-valor>De</span>
-                <input type="number" name="valor_numero" step="any" inputmode="decimal">
+                <input type="number" name="valor_numero" step="any" inputmode="decimal" value="{{ valores.valor }}">
             </label>
             <label data-so-entre><span>Até</span>
-                <input type="number" name="valor_numero_ate" step="any" inputmode="decimal">
+                <input type="number" name="valor_numero_ate" step="any" inputmode="decimal" value="{{ valores.ate }}">
             </label>
             {% if variavel.unidade %}<span class="valores-unidade">{{ variavel.unidade }}</span>{% endif %}
         </div>
@@ -42,7 +45,7 @@
             <legend>Condição</legend>
             <div class="escolhas">
                 {% for valor, rotulo in form.fields.operador.choices %}
-                    <label class="escolha"><input type="radio" name="operador" value="{{ valor }}" {% if forloop.first %}checked{% endif %}><span>{{ rotulo }}</span></label>
+                    <label class="escolha"><input type="radio" name="operador" value="{{ valor }}" {% if criterio %}{% if valor == criterio.operador %}checked{% endif %}{% elif forloop.first %}checked{% endif %}><span>{{ rotulo }}</span></label>
                 {% endfor %}
             </div>
         </fieldset>
@@ -50,7 +53,7 @@
             <legend>Nível</legend>
             <div class="escolhas niveis">
                 {% for opcao in form.fields.opcoes.queryset %}
-                    <label class="escolha"><input type="radio" name="opcoes" value="{{ opcao.pk }}"><span>{{ opcao.rotulo }}</span></label>
+                    <label class="escolha"><input type="radio" name="opcoes" value="{{ opcao.pk }}" {% if opcao.pk in marcadas %}checked{% endif %}><span>{{ opcao.rotulo }}</span></label>
                 {% endfor %}
             </div>
         </fieldset>
@@ -73,7 +76,16 @@
                 <p class="previa-rotulo m-0">Escolhidos</p>
                 <div class="opcoes-botoes"><button type="button" data-limpar-cascata>Limpar</button></div>
             </div>
-            <div id="cascata-escolhidos" class="cascata-escolhidos"><span class="regras-vazio">Nenhum município escolhido.</span></div>
+            <div id="cascata-escolhidos" class="cascata-escolhidos">
+                {% for opcao in selecionadas %}
+                    <span class="etiqueta">
+                        <input type="hidden" name="opcoes" value="{{ opcao.pk }}">
+                        <span>{{ opcao.rotulo }}</span>
+                        <button type="button" aria-label="Remover {{ opcao.rotulo }}">×</button>
+                    </span>
+                {% endfor %}
+            </div>
+            <p id="cascata-vazio" class="regras-vazio" {% if selecionadas %}hidden{% endif %}>Nenhum município escolhido.</p>
         </fieldset>
 
     {% elif variavel.tipo == "nominal" %}
@@ -88,7 +100,7 @@
             </div>
             <div class="escolhas caixas">
                 {% for opcao in form.fields.opcoes.queryset %}
-                    <label class="escolha"><input type="checkbox" name="opcoes" value="{{ opcao.pk }}"><span>{{ opcao.rotulo }}</span></label>
+                    <label class="escolha"><input type="checkbox" name="opcoes" value="{{ opcao.pk }}" {% if opcao.pk in marcadas %}checked{% endif %}><span>{{ opcao.rotulo }}</span></label>
                 {% endfor %}
             </div>
         </fieldset>
@@ -98,7 +110,7 @@
             <legend>Resposta</legend>
             <div class="escolhas">
                 {% for valor, rotulo in form.fields.operador.choices %}
-                    <label class="escolha"><input type="radio" name="operador" value="{{ valor }}"><span>{{ rotulo }}</span></label>
+                    <label class="escolha"><input type="radio" name="operador" value="{{ valor }}" {% if criterio and valor == criterio.operador %}checked{% endif %}><span>{{ rotulo }}</span></label>
                 {% endfor %}
             </div>
         </fieldset>
@@ -111,5 +123,8 @@
         </div>
     </div>
 
-    <button type="submit" class="painel-acao config-adicionar" disabled>Adicionar critério</button>
+    <div class="config-acoes">
+        <button type="submit" class="painel-acao config-adicionar" disabled>{% if criterio %}Salvar alteração{% else %}Adicionar critério{% endif %}</button>
+        {% if criterio %}<button type="button" class="painel-voltar config-cancelar" data-cancelar>Cancelar</button>{% endif %}
+    </div>
 </form>

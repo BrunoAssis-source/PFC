@@ -9,6 +9,7 @@
     var resultados = document.getElementById("resultados-busca");
     var configuracao = document.getElementById("configuracao");
     var regras = document.getElementById("regras");
+    var textoInicial = configuracao.innerHTML;
     var aberta = { url: null, botao: null };
     var esperaBusca = null;
     var esperaPrevia = null;
@@ -162,23 +163,18 @@
         var filtro = bloco.querySelector("#cascata-filtro");
         var lista = bloco.querySelector("#cascata-lista");
         var escolhidos = bloco.querySelector("#cascata-escolhidos");
-        var vazio = escolhidos.innerHTML;
+        var vazio = bloco.querySelector("#cascata-vazio");
 
         function sincronizar() {
             lista.querySelectorAll('input[type="checkbox"]').forEach(function (caixa) {
                 caixa.checked = !!escolhidos.querySelector('input[value="' + caixa.value + '"]');
             });
-            if (!escolhidos.children.length) {
-                escolhidos.innerHTML = vazio;
-            }
+            vazio.hidden = !!escolhidos.querySelector(".etiqueta");
         }
 
         function adicionar(caixa) {
             if (escolhidos.querySelector('input[value="' + caixa.value + '"]')) {
                 return;
-            }
-            if (!escolhidos.querySelector(".etiqueta")) {
-                escolhidos.innerHTML = "";
             }
             var etiqueta = document.createElement("span");
             etiqueta.className = "etiqueta";
@@ -240,10 +236,17 @@
         });
 
         bloco.querySelector("[data-limpar-cascata]").addEventListener("click", function () {
-            escolhidos.innerHTML = vazio;
+            escolhidos.querySelectorAll(".etiqueta").forEach(function (etiqueta) {
+                etiqueta.remove();
+            });
             sincronizar();
             agendarPrevia(form);
         });
+    }
+
+    function fecharConfiguracao() {
+        configuracao.innerHTML = textoInicial;
+        marcarAtiva(null);
     }
 
     function iniciarFormulario(form) {
@@ -268,6 +271,11 @@
             agendarPrevia(form);
         });
 
+        var cancelar = form.querySelector("[data-cancelar]");
+        if (cancelar) {
+            cancelar.addEventListener("click", fecharConfiguracao);
+        }
+
         form.addEventListener("submit", function (evento) {
             evento.preventDefault();
             fetch(form.action, { method: "POST", body: new FormData(form) }).then(function (resposta) {
@@ -277,9 +285,13 @@
                 return resposta.text().then(function (html) {
                     if (resposta.ok) {
                         regras.innerHTML = html;
-                        // Recarrega a mesma variável com o formulário limpo, para
-                        // adicionar outro critério sobre ela sem escolhê-la de novo.
-                        abrirConfiguracao(aberta.url, aberta.botao);
+                        if (form.dataset.modo === "edicao") {
+                            fecharConfiguracao();
+                        } else {
+                            // Recarrega a mesma variável com o formulário limpo, para
+                            // adicionar outro critério sobre ela sem escolhê-la de novo.
+                            abrirConfiguracao(aberta.url, aberta.botao);
+                        }
                     } else {
                         document.getElementById("previa").innerHTML = html;
                     }
@@ -287,6 +299,13 @@
             });
         });
     }
+
+    regras.addEventListener("click", function (evento) {
+        var editar = evento.target.closest(".regra-editar");
+        if (editar) {
+            abrirConfiguracao(editar.dataset.url, null);
+        }
+    });
 
     regras.addEventListener("submit", function (evento) {
         var form = evento.target.closest(".remover-criterio");

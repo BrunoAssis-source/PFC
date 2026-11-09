@@ -3,7 +3,7 @@ from django.db.models import Count
 from django.http import Http404
 from django.urls import reverse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_http_methods, require_POST
 
 from auditoria.models import RegistroAuditoria
 from auditoria.servicos import registrar
@@ -114,8 +114,28 @@ def buscar_variaveis(request, id):
 def configurar_criterio(request, id, variavel_id):
     estudo = estudo_do_pesquisador(request, id)
     variavel = variavel_selecionavel(variavel_id)
-    form = CriterioForm(variavel=variavel)
-    return render(request, "estudos/_configuracao.html", {"estudo": estudo, "variavel": variavel, "form": form})
+    return render(request, "estudos/_configuracao.html", contexto_configuracao(estudo, variavel))
+
+
+def contexto_configuracao(estudo, variavel, criterio=None):
+    """Contexto da coluna do meio, em branco ou preenchido com o critério em edição."""
+    contexto = {
+        "estudo": estudo, "variavel": variavel, "form": CriterioForm(variavel=variavel),
+        "criterio": criterio, "selecionadas": [], "marcadas": [], "valores": {},
+    }
+    if criterio:
+        contexto["selecionadas"] = list(criterio.opcoes.all())
+        contexto["marcadas"] = [opcao.pk for opcao in contexto["selecionadas"]]
+        contexto["valores"] = {
+            "valor": numero_do_campo(criterio.valor_numero),
+            "ate": numero_do_campo(criterio.valor_numero_ate),
+        }
+    return contexto
+
+
+def numero_do_campo(valor):
+    # O campo type=number só entende ponto decimal e não quer zeros à direita.
+    return "" if valor is None else format(valor.normalize(), "f")
 
 
 @exige_perfil(Usuario.Perfil.PESQUISADOR)
@@ -150,6 +170,22 @@ def previa_criterio(request, id, variavel_id):
 def adicionar_criterio(request, id, variavel_id):
     estudo = estudo_do_pesquisador(request, id)
     form = criterio_da_requisicao(request, estudo, variavel_selecionavel(variavel_id), request.POST)
+    if not form.is_valid():
+        contexto = {"completo": False, "pendencia": form.pendencia(), "frase": ""}
+        return render(request, "estudos/_previa.html", contexto, status=422)
+    form.save()
+    return render(request, "estudos/_regras.html", contexto_regras(estudo))
+
+
+@exige_perfil(Usuario.Perfil.PESQUISADOR)
+@require_http_methods(["GET", "POST"])
+def editar_criterio(request, id, criterio_id):
+    estudo = estudo_do_pesquisador(request, id)
+    criterio = get_object_or_404(Criterio.objects.select_related("variavel"), pk=criterio_id, estudo=estudo)
+    if request.method == "GET":
+        return render(request, "estudos/_configuracao.html", contexto_configuracao(estudo, criterio.variavel, criterio))
+
+    form = CriterioForm(request.POST, variavel=criterio.variavel, instance=criterio)
     if not form.is_valid():
         contexto = {"completo": False, "pendencia": form.pendencia(), "frase": ""}
         return render(request, "estudos/_previa.html", contexto, status=422)

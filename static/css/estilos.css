@@ -1083,6 +1083,27 @@ a.painel-item:hover {
     color: var(--tinta-suave);
 }
 
+.config-edicao {
+    margin: 0 0 1.25rem;
+    padding: .7rem .9rem;
+    border-radius: 10px;
+    background: var(--areia-clara);
+    font-size: .9rem;
+    color: var(--tinta-suave);
+}
+
+.config-acoes {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.config-cancelar {
+    min-height: 44px;
+    border: 0;
+    background: none;
+}
+
 .config-adicionar {
     min-height: 44px;
     cursor: pointer;
@@ -1129,6 +1150,21 @@ a.painel-item:hover {
 
 .regra form {
     margin: 0;
+}
+
+.regra-editar {
+    min-height: 44px;
+    margin-left: auto;
+    padding: 0 .6rem;
+    border: 0;
+    border-radius: 10px;
+    background: none;
+    font-size: .9rem;
+    color: var(--verde);
+}
+
+.regra-editar:hover {
+    background: var(--verde-fraco);
 }
 
 .regra-remover {

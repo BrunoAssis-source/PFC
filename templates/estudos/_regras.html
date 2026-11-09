@@ -6,6 +6,7 @@
         {% for criterio in inclusao %}
             <li class="regra">
                 <span>{{ criterio.descricao }}</span>
+                <button type="button" class="regra-editar" data-url="{% url 'estudos:editar_criterio' estudo.id criterio.id %}" aria-label="Editar critério: {{ criterio.descricao }}">Editar</button>
                 <form method="post" class="remover-criterio" action="{% url 'estudos:remover_criterio' estudo.id criterio.id %}">
                     {% csrf_token %}
                     <button type="submit" class="regra-remover" aria-label="Remover critério: {{ criterio.descricao }}">×</button>
@@ -23,6 +24,7 @@
         {% for criterio in exclusao %}
             <li class="regra">
                 <span>{{ criterio.descricao }}</span>
+                <button type="button" class="regra-editar" data-url="{% url 'estudos:editar_criterio' estudo.id criterio.id %}" aria-label="Editar critério: {{ criterio.descricao }}">Editar</button>
                 <form method="post" class="remover-criterio" action="{% url 'estudos:remover_criterio' estudo.id criterio.id %}">
                     {% csrf_token %}
                     <button type="submit" class="regra-remover" aria-label="Remover critério: {{ criterio.descricao }}">×</button>
