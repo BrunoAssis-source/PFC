@@ -86,3 +86,19 @@ def test_resultado_traz_caminho_e_tipo():
 )
 def test_rotulo_de_tipo_mostrado_na_arvore(codigo, rotulo):
     assert Variavel.objects.get(codigo=codigo).tipo_resumido == rotulo
+
+
+def test_pessoa_com_deficiencia_e_sensivel_e_achada_por_sinonimo():
+    variavel = Variavel.objects.get(codigo="pessoa_com_deficiencia")
+
+    assert variavel.sensivel
+    assert variavel.tipo == Variavel.Tipo.BOOLEANA
+    assert variavel.subcategoria.nome == "Identificação básica"
+    for termo in ("PcD", "deficiente", "necessidades especiais"):
+        assert "Pessoa com deficiência" in rotulos(termo)
+
+
+def test_variaveis_sensiveis_do_catalogo():
+    sensiveis = set(Variavel.objects.filter(sensivel=True).values_list("codigo", flat=True))
+
+    assert sensiveis == {"identidade_genero", "orientacao_sexual", "raca_cor", "pessoa_com_deficiencia"}
