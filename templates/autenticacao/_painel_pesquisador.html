@@ -3,7 +3,7 @@
         {% for rotulo, total in painel.por_situacao %}
             <div class="dash-cartao">
                 <span class="dash-numero">{{ total }}</span>
-                <span class="dash-legenda">Estudos {{ rotulo|lower }}{{ total|pluralize:",s" }}</span>
+                <span class="dash-legenda">{{ rotulo }}{{ total|pluralize }}</span>
             </div>
         {% endfor %}
         <div class="dash-cartao">

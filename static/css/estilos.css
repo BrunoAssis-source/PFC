@@ -1267,6 +1267,10 @@ a.painel-item:hover {
     margin-top: 2rem;
 }
 
+.dash .painel-secao {
+    margin-top: 2rem;
+}
+
 .dash-cartoes {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
