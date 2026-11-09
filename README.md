@@ -51,6 +51,8 @@ Cada resposta é gravada e conferida na mesma transação. A conferência é fei
 
 O profissional não vê o resultado da verificação. A tela de eliminação diz apenas "Coleta encerrada: este voluntário não é compatível com o estudo.", igual para qualquer critério e para variável comum ou sensível, e a ficha mostra a participação como encerrada. Os testes comparam o conteúdo da tela, o redirecionamento e o número de consultas entre os casos. O critério que eliminou aparece só para o pesquisador, na tela do estudo, junto do código curto do voluntário.
 
+O município é escolhido na mesma cascata da tela de critérios, estado primeiro e depois o município com filtro por nome, mas com escolha de um só. O componente é compartilhado (`static/js/cascata.js` e `templates/estudos/_cascata.html`).
+
 Os valores coletados ficam em linhas (voluntário, variável, valor, fonte, data), ligados ao voluntário só pelo código HMAC. Valor novo da mesma variável é linha nova, e a verificação usa a mais recente.
 
 Variável marcada como sensível (identidade de gênero, orientação sexual, pessoa com deficiência e raça ou cor) vai para a tabela `ValorSensivel`, com a mesma estrutura e sem cifra de coluna. A decisão tem quatro razões. O domínio de cada variável é uma lista fechada, então cifrar o valor esconderia pouco. A verificação e o reaproveitamento entre estudos comparam valores no banco, o que a cifra impediria. A tabela separada isola esses dados do restante. E o acesso é auditado, com o banco cifrado em repouso pelo provedor. A auditoria registra cada resposta a variável sensível, com o código da variável e o código curto do voluntário, nunca o valor.
@@ -66,7 +68,6 @@ A leitura de valor sensível por outra tela, como a do pesquisador, ainda não e
 - Retomada de participação interrompida. A situação `interrompida` existe, mas nenhuma tela a aplica. Hoje a coleta em andamento continua de onde parou ao ser aberta de novo, sem um passo explícito de interromper.
 - Fluxo de fonte confirmada. A fonte é gravada em cada resposta, mas nada ainda distingue fonte confirmada de informada pelo voluntário. O estado pendente dos estudos auxiliares depende disso.
 - Variáveis exigidas além dos critérios. O estudo só pergunta as variáveis que aparecem em critérios.
-- Seleção de município. A lista tem 5.571 opções em uma caixa de seleção única, sem a cascata por estado que a tela de critérios tem.
 
 ### Trabalho futuro na identificação de voluntários
 
