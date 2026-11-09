@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     "estudos",
     "catalogo",
     "auditoria",
+    "voluntarios",
 ]
 
 MIDDLEWARE = [

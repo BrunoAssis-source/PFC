@@ -17,6 +17,11 @@ class RegistroAuditoria(models.Model):
         CRITERIO_ADICAO = "criterio_adicao", "adição de critério"
         CRITERIO_EDICAO = "criterio_edicao", "edição de critério"
         CRITERIO_REMOCAO = "criterio_remocao", "remoção de critério"
+        VOLUNTARIO_BUSCA = "voluntario_busca", "busca de voluntário"
+        VOLUNTARIO_CADASTRO = "voluntario_cadastro", "cadastro de voluntário"
+        VOLUNTARIO_DUPLICADO = "voluntario_duplicado", "cadastro de voluntário repetido"
+        VOLUNTARIO_LEITURA = "voluntario_leitura", "leitura de voluntário"
+        PARTICIPACAO_VINCULO = "participacao_vinculo", "vínculo a estudo com TCLE"
 
     # Nulo quando o login falhou antes de identificar um usuário válido.
     usuario = models.ForeignKey(
