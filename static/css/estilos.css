@@ -536,7 +536,8 @@ a.painel-item:hover {
     .painel-menu {
         flex-direction: row;
         width: auto;
-        flex: 1;
+        /* Sem crescer: em coluna, flex: 1 esticava o menu na vertical quando a página tinha pouco conteúdo. */
+        flex: 0 0 auto;
         overflow-x: auto;
         border-right: 0;
         border-bottom: 1px solid var(--borda);
