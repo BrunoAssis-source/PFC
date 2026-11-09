@@ -60,7 +60,11 @@ def editar(request, id):
 def detalhe(request, id):
     estudo = estudo_do_pesquisador(request, id)
     registrar(RegistroAuditoria.Acao.ESTUDO_LEITURA, request=request, usuario=request.user, objeto=estudo.nome)
-    return render(request, "estudos/detalhe.html", contexto_regras(estudo))
+    contexto = contexto_regras(estudo)
+    contexto["eliminadas"] = estudo.participacoes.filter(situacao="eliminada").select_related(
+        "voluntario", "criterio_reprovado__variavel"
+    ).order_by("-encerrada_em")
+    return render(request, "estudos/detalhe.html", contexto)
 
 
 def variavel_selecionavel(variavel_id):

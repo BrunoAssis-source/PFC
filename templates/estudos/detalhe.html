@@ -38,6 +38,24 @@
     <p class="painel-vazio">Nenhum critério neste estudo. Cada critério é uma variável, uma condição e a escolha entre incluir ou excluir quem a atende.</p>
 {% endif %}
 
+{% if eliminadas %}
+<div class="painel-secao">
+    <h2 class="painel-secao-titulo">Voluntários eliminados na coleta</h2>
+    <span class="painel-secao-contagem">{{ eliminadas|length }} registro{{ eliminadas|length|pluralize }}</span>
+</div>
+<div class="painel-lista">
+    {% for p in eliminadas %}
+        <div class="painel-linha">
+            <span class="painel-linha-texto">
+                <strong>Voluntário {{ p.voluntario.codigo_hmac|slice:":8" }}</strong>
+                <span class="painel-linha-sub">{% if p.criterio_reprovado %}{{ p.criterio_reprovado.frase }}{% else %}Critério removido do estudo{% endif %}</span>
+            </span>
+            <span class="painel-linha-contagem">{{ p.encerrada_em|date:"d/m/Y" }}</span>
+        </div>
+    {% endfor %}
+</div>
+{% endif %}
+
 <div class="painel-formulario-acoes">
     <a class="painel-acao" href="{% url 'estudos:criterios' estudo.id %}">
         {% if resumo %}Gerenciar critérios{% else %}<span aria-hidden="true">+</span> Definir critérios{% endif %}

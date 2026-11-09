@@ -21,7 +21,12 @@
                 <strong>{{ p.estudo.nome }}</strong>
                 <span class="painel-linha-sub">TCLE versão {{ p.tcle_versao }}, conferido em {{ p.tcle_aceito_em|date:"d/m/Y" }}</span>
             </span>
-            <span class="painel-selo {{ p.situacao }}">{{ p.get_situacao_display }}</span>
+            {% if p.situacao == "em_coleta" %}
+                <a class="painel-acao" href="{% url 'voluntarios:coleta' voluntario.id p.id %}">Coletar dados</a>
+            {% else %}
+                {# O profissional não vê o resultado da verificação, só que a coleta terminou. #}
+                <span class="painel-selo {{ p.situacao }}">{% if p.situacao == "eliminada" %}encerrada{% else %}{{ p.get_situacao_display }}{% endif %}</span>
+            {% endif %}
         </div>
     {% empty %}
         <p class="painel-vazio">Este voluntário ainda não está em nenhum estudo.</p>

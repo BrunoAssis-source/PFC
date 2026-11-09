@@ -9,7 +9,8 @@ from autenticacao.models import Usuario
 from autenticacao.permissoes import exige_perfil
 
 from . import cpf as cpf_util
-from .forms import CpfForm, VinculoForm
+from .coleta import concluir_se_terminou, proxima_variavel, registrar_resposta
+from .forms import CpfForm, RespostaForm, VinculoForm
 from .models import TCLE_VERSAO_ATUAL, Participacao, Voluntario
 
 Acao = RegistroAuditoria.Acao
@@ -101,3 +102,48 @@ def vincular(request, id):
     else:
         messages.info(request, "Este voluntário já participa do estudo.")
     return redirect("voluntarios:detalhe", id=voluntario.id)
+
+
+@exige_perfil(Usuario.Perfil.PROFISSIONAL)
+def coletar(request, id, participacao_id):
+    participacao = get_object_or_404(
+        Participacao.objects.select_related("estudo", "voluntario"), pk=participacao_id, voluntario_id=id
+    )
+    em_coleta = participacao.situacao == Participacao.Situacao.EM_COLETA
+    if not em_coleta and participacao.situacao not in (Participacao.Situacao.ELIMINADA, Participacao.Situacao.CONCLUIDA):
+        return redirect("voluntarios:detalhe", id=id)
+
+    variavel = proxima_variavel(participacao) if em_coleta else None
+    if em_coleta and variavel is None:
+        concluir_se_terminou(participacao)
+        em_coleta = False
+
+    if em_coleta and request.method == "POST" and request.POST.get("variavel") == str(variavel.id):
+        form = RespostaForm(request.POST, variavel=variavel)
+        if form.is_valid():
+            if variavel.sensivel:
+                acao = Acao.SENSIVEL_RESPOSTA
+            else:
+                acao = Acao.COLETA_RESPOSTA
+            segue = registrar_resposta(participacao, variavel, form.valores(), form.cleaned_data["fonte"], request.user)
+            registrar(
+                acao,
+                request=request,
+                usuario=request.user,
+                objeto=f"{participacao.voluntario.codigo_hmac[:8]} {variavel.codigo}",
+            )
+            if not segue:
+                registrar(
+                    Acao.COLETA_ELIMINACAO,
+                    request=request,
+                    usuario=request.user,
+                    objeto=f"{participacao.voluntario.codigo_hmac[:8]} em {participacao.estudo.nome}",
+                )
+            # Resposta e fim da coleta voltam pela mesma rota, sem dado da variável que reprovou.
+            return redirect("voluntarios:coleta", id=id, participacao_id=participacao.id)
+    elif em_coleta:
+        form = RespostaForm(variavel=variavel)
+
+    if em_coleta:
+        return render(request, "voluntarios/coleta.html", {"participacao": participacao, "variavel": variavel, "form": form})
+    return render(request, "voluntarios/coleta_encerrada.html", {"participacao": participacao, "eliminada": participacao.situacao == Participacao.Situacao.ELIMINADA})

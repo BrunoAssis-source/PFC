@@ -1,0 +1,28 @@
+{% extends "painel.html" %}
+{% block title %}Coleta de dados | UniData{% endblock %}
+{% block content %}
+<div class="painel-cabecalho">
+    <div>
+        <p class="painel-rotulo">Coleta de dados de pesquisa</p>
+        <h1 class="painel-titulo">{{ variavel.nome }}</h1>
+        {% if variavel.definicao %}<p class="painel-abertura">{{ variavel.definicao }}</p>{% endif %}
+    </div>
+    <a class="painel-voltar" href="{% url 'voluntarios:detalhe' participacao.voluntario_id %}">Voltar à ficha</a>
+</div>
+
+<form class="painel-formulario" method="post">
+    {% csrf_token %}
+    <input type="hidden" name="variavel" value="{{ variavel.id }}">
+    {% for field in form %}
+        <div class="mb-3">
+            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+            {% if field.help_text %}<div class="ajuda-campo">{{ field.help_text }}</div>{% endif %}
+        </div>
+    {% endfor %}
+    <div class="painel-formulario-acoes">
+        <button class="painel-acao" type="submit">Registrar e continuar</button>
+    </div>
+</form>
+{% endblock %}
