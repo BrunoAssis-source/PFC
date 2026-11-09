@@ -75,7 +75,35 @@ class CriterioForm(forms.ModelForm):
                 self.add_error(None, erro)
             else:
                 self.recusar_todas_as_opcoes(dados, escolhidas)
+        if not self.errors:
+            self.recusar_duplicado(dados)
         return dados
+
+    def recusar_duplicado(self, dados):
+        """Mesma variável, regra, condição e valores que outro critério do estudo."""
+        if not self.instance.estudo_id or "operador" not in dados:
+            return
+        operador = dados["operador"]
+        # O segundo valor só conta no "entre"; nas outras condições ele é resíduo.
+        ate = dados.get("valor_numero_ate") if operador == Operador.ENTRE else None
+        escolhidas = {opcao.pk for opcao in dados.get("opcoes") or []}
+        existentes = (
+            Criterio.objects.filter(
+                estudo_id=self.instance.estudo_id, variavel=self.variavel,
+                tipo_regra=dados["tipo_regra"], operador=operador,
+            )
+            .exclude(pk=self.instance.pk)
+            .prefetch_related("opcoes")
+        )
+        for existente in existentes:
+            mesmo_ate = (existente.valor_numero_ate if operador == Operador.ENTRE else None) == ate
+            if (
+                existente.valor_numero == dados.get("valor_numero")
+                and mesmo_ate
+                and {opcao.pk for opcao in existente.opcoes.all()} == escolhidas
+            ):
+                self.add_error(None, "Este critério já existe neste estudo.")
+                return
 
     def recusar_todas_as_opcoes(self, dados, escolhidas):
         # Marcar todas as opções de uma lista não restringe ninguém: na inclusão
