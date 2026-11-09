@@ -7,6 +7,13 @@
 <form method="post">
     {% csrf_token %}
     {% for field in form %}
+        {% if field.name == "aceite" %}
+        <div class="form-check mb-3">
+            {{ field }}
+            <label class="form-check-label" for="{{ field.id_for_label }}">Li e aceito os <a href="{% url 'termos_de_uso' %}" target="_blank" rel="noopener">termos de uso</a> e a <a href="{% url 'politica_privacidade' %}" target="_blank" rel="noopener">política de privacidade</a></label>
+            {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+        </div>
+        {% else %}
         <div class="mb-3">
             <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
             {% if field.field.widget.input_type == "password" %}
@@ -17,11 +24,11 @@
             {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
             {% if field.help_text %}<div class="ajuda-campo">{{ field.help_text }}</div>{% endif %}
         </div>
+        {% endif %}
     {% endfor %}
     <button class="acesso-botao" type="submit">Criar cadastro</button>
 </form>
 <div class="acesso-links">
     <a href="{% url 'login' %}">Já tenho conta</a>
 </div>
-<p class="acesso-aviso">Ao continuar, você declara que leu os <a href="{% url 'termos_de_uso' %}">termos de uso</a> e a <a href="{% url 'politica_privacidade' %}">política de privacidade</a>.</p>
 {% endblock %}

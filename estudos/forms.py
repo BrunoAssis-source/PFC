@@ -17,6 +17,9 @@ OPERADORES_DA_TELA = {
         (Operador.MAIOR_IGUAL, "pelo menos"),
         (Operador.MENOR_IGUAL, "no máximo"),
         (Operador.IGUAL, "exatamente"),
+        (Operador.DIFERENTE, "diferente de"),
+        (Operador.MAIOR, "acima de"),
+        (Operador.MENOR, "abaixo de"),
     ),
     Variavel.Tipo.ORDINAL: (
         (Operador.MAIOR_IGUAL, "a partir de"),

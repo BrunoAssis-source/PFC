@@ -5,6 +5,7 @@
     }
 
     var busca = document.getElementById("busca-variavel");
+    var filtroSubcategoria = document.getElementById("filtro-subcategoria");
     var arvore = document.getElementById("arvore");
     var resultados = document.getElementById("resultados-busca");
     var configuracao = document.getElementById("configuracao");
@@ -40,6 +41,9 @@
             return;
         }
         var endereco = tela.dataset.buscaUrl + "?q=" + encodeURIComponent(termo);
+        if (filtroSubcategoria.value) {
+            endereco += "&sub=" + encodeURIComponent(filtroSubcategoria.value);
+        }
         ultimaBusca = endereco;
         pegar(endereco).then(function (html) {
             // Resposta de uma busca anterior que chegou atrasada.
@@ -52,6 +56,8 @@
             arvore.hidden = true;
         });
     }
+
+    filtroSubcategoria.addEventListener("change", buscar);
 
     busca.addEventListener("input", function () {
         clearTimeout(esperaBusca);

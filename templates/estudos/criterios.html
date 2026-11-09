@@ -23,6 +23,13 @@
         <input type="search" id="busca-variavel" class="criterios-busca" autocomplete="off"
                placeholder="idade, renda, escolaridade..." aria-controls="resultados-busca"
                {% if somente_leitura %}disabled{% endif %}>
+        <label class="form-label mt-2" for="filtro-subcategoria">Filtrar a busca por subcategoria</label>
+        <select id="filtro-subcategoria" class="form-select" {% if somente_leitura %}disabled{% endif %}>
+            <option value="">Todas as subcategorias</option>
+            {% for dominio in arvore %}{% for grupo in dominio.grupos %}
+                <option value="{{ grupo.subcategoria.id }}">{{ grupo.subcategoria.nome }}</option>
+            {% endfor %}{% endfor %}
+        </select>
         <p class="criterios-ajuda">Aceita sinônimos: "grau de instrução", "bolsa família", "cidade"...</p>
 
         <div id="resultados-busca" class="arvore" aria-live="polite" hidden></div>

@@ -272,7 +272,7 @@ def test_formulario_booleano_sem_resposta_pede_sim_ou_nao():
 
 
 def test_formulario_nao_oferece_operador_fora_da_tela():
-    form = formulario("idade_anos", {"tipo_regra": "inclusao", "operador": "diferente", "valor_numero": "18"})
+    form = formulario("idade_anos", {"tipo_regra": "inclusao", "operador": "antes", "valor_numero": "18"})
 
     assert not form.is_valid()
     assert "operador" in form.errors

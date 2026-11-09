@@ -125,9 +125,13 @@ def criterios(request, id):
 def buscar_variaveis(request, id):
     estudo = estudo_do_pesquisador(request, id)
     termo = request.GET.get("q", "").strip()
+    variaveis = buscar_criterios(termo).select_related("subcategoria__categoria")
+    if request.GET.get("sub", "").isdigit():
+        variaveis = variaveis.filter(subcategoria_id=int(request.GET["sub"]))
+    variaveis = variaveis[:60]
     contexto = {
         "estudo": estudo, "termo": termo, "usadas_ids": set(estudo.criterios.values_list("variavel_id", flat=True)),
-        "variaveis": buscar_criterios(termo).select_related("subcategoria__categoria")[:30],
+        "variaveis": variaveis,
     }
     return render(request, "estudos/_resultados.html", contexto)
 

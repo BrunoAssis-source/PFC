@@ -68,12 +68,19 @@ class LoginForm(EstiloBootstrapMixin, AuthenticationForm):
 
 
 class CadastroForm(AjudaSenhaMixin, EstiloBootstrapMixin, UserCreationForm):
+    # RN02: sem o aceite dos termos de uso e da política de privacidade a conta não é criada.
+    aceite = forms.BooleanField(
+        label="Li e aceito os termos de uso e a política de privacidade",
+        error_messages={"required": "Aceite os termos de uso e a política de privacidade para criar a conta."},
+    )
+
     class Meta:
         model = Usuario
         fields = ("nome_completo", "email", "perfil", "password1", "password2")
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["aceite"].widget.attrs["class"] = "form-check-input"
         # Começa vazio para a escolha do perfil ser deliberada.
         self.fields["perfil"].choices = [("", "Selecione seu perfil")] + list(Usuario.Perfil.choices)
         self.fields["perfil"].initial = ""
