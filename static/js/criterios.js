@@ -47,6 +47,7 @@
                 return;
             }
             resultados.innerHTML = html;
+            marcarUsadas();
             resultados.hidden = false;
             arvore.hidden = true;
         });
@@ -56,6 +57,20 @@
         clearTimeout(esperaBusca);
         esperaBusca = setTimeout(buscar, 200);
     });
+
+    // RN19: variável já usada em critério do estudo fica indisponível na árvore e nos resultados da busca.
+    function marcarUsadas() {
+        var marca = regras.querySelector("[data-usadas]");
+        var usadas = marca && marca.dataset.usadas ? marca.dataset.usadas.split(",") : [];
+        tela.querySelectorAll(".variavel-botao[data-variavel]").forEach(function (botao) {
+            var emUso = usadas.indexOf(botao.dataset.variavel) >= 0;
+            botao.disabled = emUso;
+            var tipo = botao.querySelector(".variavel-tipo");
+            if (tipo) {
+                tipo.textContent = emUso ? "em uso" : tipo.dataset.tipo;
+            }
+        });
+    }
 
     function marcarAtiva(botao) {
         tela.querySelectorAll(".variavel-botao[aria-current]").forEach(function (outro) {
@@ -198,6 +213,7 @@
                 return resposta.text().then(function (html) {
                     if (resposta.ok) {
                         regras.innerHTML = html;
+                        marcarUsadas();
                         if (form.dataset.modo === "edicao") {
                             fecharConfiguracao();
                         } else {
@@ -260,6 +276,7 @@
             .then(function (html) {
                 if (html) {
                     regras.innerHTML = html;
+                        marcarUsadas();
                     regras.focus();
                 }
             });

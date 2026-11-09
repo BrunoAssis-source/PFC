@@ -34,12 +34,13 @@
                         <ul class="arvore-lista">
                             {% for variavel in grupo.variaveis %}
                                 <li>
-                                    <button type="button" class="variavel-botao"
+                                    <button type="button" class="variavel-botao" data-variavel="{{ variavel.id }}"
+                                            {% if variavel.id in usadas_ids %}disabled aria-disabled="true"{% endif %}
                                             {% if variavel.id == variavel_inicial %}aria-current="true"{% endif %}
                                             data-url="{% url 'estudos:configurar_criterio' estudo.id variavel.id %}"
                                             title="{{ variavel.definicao }}">
                                         <span>{{ variavel.rotulo }}</span>
-                                        <span class="variavel-tipo">{{ variavel.tipo_resumido }}</span>
+                                        <span class="variavel-tipo" data-tipo="{{ variavel.tipo_resumido }}">{% if variavel.id in usadas_ids %}em uso{% else %}{{ variavel.tipo_resumido }}{% endif %}</span>
                                     </button>
                                 </li>
                             {% endfor %}

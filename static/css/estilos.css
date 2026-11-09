@@ -801,6 +801,11 @@ a.painel-item:hover {
     text-align: left;
 }
 
+.variavel-botao:disabled {
+    opacity: .55;
+    cursor: not-allowed;
+}
+
 .variavel-botao:hover {
     background: var(--areia-clara);
 }

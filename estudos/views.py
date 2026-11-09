@@ -73,7 +73,11 @@ def variavel_selecionavel(variavel_id):
 
 def contexto_regras(estudo):
     inclusao, exclusao = estudo.regras()
-    return {"estudo": estudo, "inclusao": inclusao, "exclusao": exclusao, "resumo": estudo.resumo_texto}
+    usadas = {criterio.variavel_id for criterio in inclusao + exclusao}
+    return {
+        "estudo": estudo, "inclusao": inclusao, "exclusao": exclusao, "resumo": estudo.resumo_texto,
+        "usadas_ids": usadas, "usadas": ",".join(map(str, sorted(usadas))),
+    }
 
 
 def arvore_do_catalogo():
@@ -110,7 +114,10 @@ def criterios(request, id):
 def buscar_variaveis(request, id):
     estudo = estudo_do_pesquisador(request, id)
     termo = request.GET.get("q", "").strip()
-    contexto = {"estudo": estudo, "termo": termo, "variaveis": buscar_criterios(termo).select_related("subcategoria__categoria")[:30]}
+    contexto = {
+        "estudo": estudo, "termo": termo, "usadas_ids": set(estudo.criterios.values_list("variavel_id", flat=True)),
+        "variaveis": buscar_criterios(termo).select_related("subcategoria__categoria")[:30],
+    }
     return render(request, "estudos/_resultados.html", contexto)
 
 

@@ -76,34 +76,16 @@ class CriterioForm(forms.ModelForm):
             else:
                 self.recusar_todas_as_opcoes(dados, escolhidas)
         if not self.errors:
-            self.recusar_duplicado(dados)
+            self.recusar_variavel_repetida()
         return dados
 
-    def recusar_duplicado(self, dados):
-        """Mesma variável, regra, condição e valores que outro critério do estudo."""
-        if not self.instance.estudo_id or "operador" not in dados:
+    def recusar_variavel_repetida(self):
+        """RN19: cada variável aparece em um só critério do estudo."""
+        if not self.instance.estudo_id:
             return
-        operador = dados["operador"]
-        # O segundo valor só conta no "entre"; nas outras condições ele é resíduo.
-        ate = dados.get("valor_numero_ate") if operador == Operador.ENTRE else None
-        escolhidas = {opcao.pk for opcao in dados.get("opcoes") or []}
-        existentes = (
-            Criterio.objects.filter(
-                estudo_id=self.instance.estudo_id, variavel=self.variavel,
-                tipo_regra=dados["tipo_regra"], operador=operador,
-            )
-            .exclude(pk=self.instance.pk)
-            .prefetch_related("opcoes")
-        )
-        for existente in existentes:
-            mesmo_ate = (existente.valor_numero_ate if operador == Operador.ENTRE else None) == ate
-            if (
-                existente.valor_numero == dados.get("valor_numero")
-                and mesmo_ate
-                and {opcao.pk for opcao in existente.opcoes.all()} == escolhidas
-            ):
-                self.add_error(None, "Este critério já existe neste estudo.")
-                return
+        repetida = Criterio.objects.filter(estudo_id=self.instance.estudo_id, variavel=self.variavel)
+        if repetida.exclude(pk=self.instance.pk).exists():
+            self.add_error(None, "Esta variável já é usada em um critério deste estudo.")
 
     def recusar_todas_as_opcoes(self, dados, escolhidas):
         # Um critério que cobre todas as opções não restringe ninguém: na inclusão

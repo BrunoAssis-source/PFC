@@ -33,11 +33,11 @@ Município de residência é escolhido em cascata: primeiro o estado, depois os 
 
 Cada regra da lista à direita tem Editar e Remover. Editar abre o critério na coluna do meio com os valores atuais, e a variável fica fixa: para usar outra, remove-se o critério e adiciona-se um novo. Tudo o mais pode mudar, como incluir ou excluir, a condição e os valores. Remover pede confirmação na própria linha, com "Sim, remover" e "Não", e o Esc desiste.
 
-A tela recusa o critério que não restringe ninguém. Numa lista de opções, marcar todas dá o aviso "Esse critério inclui todos os participantes" (ou "exclui", quando a regra é de exclusão). Numa escala de níveis, vale o mesmo para "a partir do nível mais baixo" e "até o nível mais alto". Também é recusado o critério idêntico a outro do mesmo estudo, com a mesma variável, regra, condição e valores. Os dois avisos aparecem na prévia, que desabilita o botão, e o servidor repete a checagem.
+A tela recusa o critério que não restringe ninguém. Numa lista de opções, marcar todas dá o aviso "Esse critério inclui todos os participantes" (ou "exclui", quando a regra é de exclusão). Numa escala de níveis, vale o mesmo para "a partir do nível mais baixo" e "até o nível mais alto". Os avisos aparecem na prévia, que desabilita o botão, e o servidor repete a checagem.
 
 Algumas variáveis sim ou não têm texto próprio para cada resposta, para a frase sair natural. Pessoa com deficiência produz "com deficiência" e "sem deficiência", em vez de "pessoa com deficiência: sim". A prévia vai por POST, com o formulário inteiro no corpo, porque uma lista grande de municípios não cabe no endereço da requisição.
 
-O mesmo critério pode se repetir no estudo, por exemplo idade mínima na inclusão e idade máxima na exclusão. Variável de texto livre não serve de critério.
+Cada variável aparece em um só critério do estudo. Na árvore e na busca, a variável já usada fica indisponível, marcada como "em uso", e o servidor recusa o cadastro de uma segunda vez. Para limitar a idade dos dois lados, o critério usa "entre". Variável de texto livre não serve de critério.
 
 O profissional identifica o voluntário em `/voluntarios/`, pelo CPF e só por ele, sem nome nem contato. O sistema valida os dígitos, calcula o código HMAC-SHA256 e procura por esse código. Se o voluntário existe, a tela abre o cadastro dele. Se não existe, oferece cadastrar. O CPF é gravado cifrado (Fernet) ao lado do código, que tem restrição de unicidade no banco, então o mesmo CPF não gera dois voluntários nem quando dois profissionais cadastram ao mesmo tempo. Na tela o CPF aparece mascarado (`***.982.247-**`) e só os 11 dígitos digitados na busca passam pelo servidor.
 
@@ -80,7 +80,6 @@ A leitura de valor sensível por outra tela, como a do pesquisador, ainda não e
 
 Ficaram de fora, por decisão de escopo, estes itens.
 
-- Aviso de contradição entre critérios. Hoje o sistema só recusa o critério duplicado. Condições que se anulam passam sem aviso, como incluir idade de pelo menos 30 anos e incluir idade de no máximo 20, ou incluir e excluir a mesma condição. O aviso deve apontar o par em conflito e valer na prévia e no servidor, como as outras checagens.
 - Regras por situação do estudo. Hoje é possível adicionar, editar e remover critério em estudo de qualquer situação. A proposta é deixar rascunho livre, pedir confirmação com aviso em estudo ativo e tornar o estudo encerrado somente leitura, inclusive para adicionar.
 - Motivo da alteração. Em estudo ativo, pedir ao pesquisador a razão da mudança e gravá-la no registro de auditoria.
 - Travamento por triagem iniciada. Quando existir verificação de elegibilidade, o critério de um estudo com triagem não deve mudar. Alterar passaria a exigir uma nova versão do estudo. Hoje não há dado de triagem para detectar isso.
