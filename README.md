@@ -31,13 +31,24 @@ Uma caixa "Como vai ficar" mostra a frase do critério enquanto ele é montado, 
 
 Município de residência é escolhido em cascata: primeiro o estado, depois os municípios dele, com filtro pelo nome. A seleção atravessa estados, então um mesmo critério pode juntar cidades de lugares diferentes. A lista é a oficial do IBGE (27 estados e 5.571 municípios, consultada em novembro de 2026) e está em `catalogo/dados/`, carregada por migration como dado fixo do sistema. Em funcionamento a aplicação não consulta nenhuma API externa, e para atualizar a lista basta gerar os dois arquivos de novo a partir da API de localidades do IBGE e criar uma migration.
 
+Cada regra da lista à direita tem Editar e Remover. Editar abre o critério na coluna do meio com os valores atuais, e a variável fica fixa: para usar outra, remove-se o critério e adiciona-se um novo. Tudo o mais pode mudar, como incluir ou excluir, a condição e os valores. Remover pede confirmação na própria linha, com "Sim, remover" e "Não", e o Esc desiste.
+
 O mesmo critério pode se repetir no estudo, por exemplo idade mínima na inclusão e idade máxima na exclusão. Variável de texto livre não serve de critério.
 
 Faltam o cadastro de voluntários, os valores coletados e a verificação de elegibilidade. Por isso as telas do profissional, registro de dados e pendências, existem ainda sem conteúdo.
 
-O app `auditoria` registra login com sucesso e com falha, logout, criação de conta, redefinição de senha, negação de acesso por perfil insuficiente e leitura ou edição de estudo. Cada registro grava usuário, ação, IP e data. A tela fica em `/auditoria/`, aberta a quem tem `is_staff`, do jeito que o Django admin já reconhece como administrador, sem depender do perfil de pesquisador ou profissional. Pelo admin do Django o mesmo registro aparece sem opção de editar nem excluir.
+O app `auditoria` registra login com sucesso e com falha, logout, criação de conta, redefinição de senha, negação de acesso por perfil insuficiente e leitura ou edição de estudo, e também adição, edição e remoção de critério. Cada registro grava usuário, ação, IP e data. A tela fica em `/auditoria/`, aberta a quem tem `is_staff`, do jeito que o Django admin já reconhece como administrador, sem depender do perfil de pesquisador ou profissional. Pelo admin do Django o mesmo registro aparece sem opção de editar nem excluir. O texto do objeto não tem limite de tamanho, porque na edição de critério o registro guarda a frase antes e depois, e uma lista de municípios passa de 150 caracteres. Se a edição não muda a frase, nada é registrado.
 
-Ainda faltam três pontos de auditoria: troca de senha por quem já está logado (hoje só existe o fluxo de redefinição por email), edição de critério (a tela atual só cria e remove, não edita) e acesso a variável marcada como sensível (o campo `sensivel` existe no catálogo, mas nenhuma tela ainda lê ou restringe por ele). Cada um entra na auditoria quando a funcionalidade correspondente existir.
+Ainda falta um ponto de auditoria, o acesso a variável marcada como sensível. O campo `sensivel` existe no catálogo, mas nenhuma tela ainda lê ou restringe por ele. O ponto entra na auditoria quando essa funcionalidade existir.
+
+### Trabalho futuro nos critérios
+
+Ficaram de fora, por decisão de escopo, quatro itens ligados a alterar e remover critério.
+
+- Regras por situação do estudo. Hoje é possível adicionar, editar e remover critério em estudo de qualquer situação. A proposta é deixar rascunho livre, pedir confirmação com aviso em estudo ativo e tornar o estudo encerrado somente leitura, inclusive para adicionar.
+- Motivo da alteração. Em estudo ativo, pedir ao pesquisador a razão da mudança e gravá-la no registro de auditoria.
+- Travamento por triagem iniciada. Quando existir verificação de elegibilidade, o critério de um estudo com triagem não deve mudar. Alterar passaria a exigir uma nova versão do estudo. Hoje não há dado de triagem para detectar isso.
+- Histórico e desfazer. A remoção apaga o critério de verdade, e só o registro de auditoria guarda a frase. Manter os critérios removidos ou alterados como versões permitiria consultar o estudo como ele estava em uma data e desfazer uma remoção.
 
 Política de privacidade e termos de uso são páginas próprias, abertas sem login, e o cadastro exige a leitura dos dois antes de criar conta. A política já descreve o que está implementado (dado de conta) e o que está previsto para quando o cadastro de participante existir (CPF cifrado, pseudonimização por HMAC-SHA256, prazo de retenção ligado ao estudo ativo), deixando explícito o que é real e o que é desenho futuro.
 
@@ -138,5 +149,7 @@ pytest, com os testes em arquivos `teste_*.py`.
 Os testes rodam no PostgreSQL do container, que precisa estar no ar. O pytest cria e descarta um banco de teste à parte, sem tocar nos dados de desenvolvimento.
 
 Os testes cobrem a busca do catálogo (sinônimo, acento, erro de digitação, variáveis que ficam fora), a frase de cada tipo de critério e do resumo do estudo, a validação de critério incompleto e a tela de critérios de ponta a ponta: configuração, prévia, adicionar e remover. O controle de acesso tem testes próprios, que confirmam o 403 para o profissional, o 404 para o estudo de outra pesquisadora e o redirecionamento do visitante, em todas as rotas da tela.
+
+Também há testes para editar critério (tela preenchida por tipo, gravação, validação e acesso), para a confirmação de remoção e para o log das três ações. A simulação do navegador usada para conferir o script da tela não está automatizada.
 
 Ainda sem testes: cadastro, login, confirmação de email, gestão de usuários e as telas de lista e edição de estudo. A avaliação de um participante contra os critérios depende do cadastro de voluntários, que não existe.
