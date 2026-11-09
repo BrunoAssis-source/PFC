@@ -20,7 +20,7 @@ def adicionar(cliente, estudo, codigo, dados):
 
 
 def previa(cliente, estudo, codigo, dados):
-    return cliente.get(endereco("previa_criterio", estudo, variavel(codigo).id), dados).content.decode()
+    return cliente.post(endereco("previa_criterio", estudo, variavel(codigo).id), dados).content.decode()
 
 
 def ids(codigo_do_dominio, *valores):

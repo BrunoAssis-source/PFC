@@ -14,7 +14,7 @@
     var esperaBusca = null;
     var esperaPrevia = null;
     var ultimaBusca = "";
-    var ultimaPrevia = "";
+    var pedidoDaPrevia = 0;
 
     // Sessão vencida ou token antigo: a resposta seria a tela de login ou a
     // página de erro, que não pode entrar no meio da tela. Recarregar resolve.
@@ -108,12 +108,6 @@
         abrirConfiguracao(botao.dataset.url, botao);
     });
 
-    function dadosDoFormulario(form) {
-        var dados = new FormData(form);
-        dados.delete("csrfmiddlewaretoken");
-        return new URLSearchParams(dados).toString();
-    }
-
     function ajustarValores(form) {
         var escolhido = form.querySelector('input[name="operador"]:checked');
         var entre = !!escolhido && escolhido.value === "entre";
@@ -128,10 +122,13 @@
     }
 
     function atualizarPrevia(form) {
-        var endereco = form.dataset.previaUrl + "?" + dadosDoFormulario(form);
-        ultimaPrevia = endereco;
-        pegar(endereco).then(function (html) {
-            if (endereco !== ultimaPrevia) {
+        var pedido = ++pedidoDaPrevia;
+        // O corpo leva o formulário inteiro, inclusive o token CSRF.
+        fetch(form.dataset.previaUrl, { method: "POST", body: new FormData(form) }).then(function (resposta) {
+            return recarregarSeFalhou(resposta) ? "" : resposta.text();
+        }).then(function (html) {
+            // Resposta de uma prévia anterior que chegou atrasada.
+            if (pedido !== pedidoDaPrevia || !html) {
                 return;
             }
             var previa = document.getElementById("previa");

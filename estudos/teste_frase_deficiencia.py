@@ -102,7 +102,7 @@ def test_texto_proprio_so_vale_para_sim_ou_nao():
 
 def test_previa_e_lista_da_tela_mostram_a_frase_corrigida(cliente, estudo):
     codigo = variavel("pessoa_com_deficiencia").id
-    previa = cliente.get(
+    previa = cliente.post(
         reverse("estudos:previa_criterio", args=[estudo.id, codigo]), {"tipo_regra": "inclusao", "operador": "falso"}
     ).content.decode()
     adicionado = cliente.post(

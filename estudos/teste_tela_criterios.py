@@ -18,7 +18,7 @@ def adicionar(cliente, estudo, codigo, dados):
 
 
 def previa(cliente, estudo, codigo, dados):
-    return cliente.get(endereco("previa_criterio", estudo, variavel(codigo).id), dados).content.decode()
+    return cliente.post(endereco("previa_criterio", estudo, variavel(codigo).id), dados).content.decode()
 
 
 def test_pagina_mostra_a_arvore_sem_codigos_internos(cliente, estudo):
@@ -216,7 +216,7 @@ def rotas_da_tela(estudo, criterio):
         ("get", endereco("criterios", estudo)),
         ("get", endereco("buscar_variaveis", estudo)),
         ("get", endereco("configurar_criterio", estudo, codigo)),
-        ("get", endereco("previa_criterio", estudo, codigo)),
+        ("post", endereco("previa_criterio", estudo, codigo)),
         ("post", endereco("adicionar_criterio", estudo, codigo)),
         ("post", endereco("remover_criterio", estudo, criterio.id)),
     ]

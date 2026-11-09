@@ -157,9 +157,11 @@ def criterio_da_requisicao(request, estudo, variavel, dados):
 
 
 @exige_perfil(Usuario.Perfil.PESQUISADOR)
+@require_POST
 def previa_criterio(request, id, variavel_id):
+    # POST porque uma lista grande de municípios não cabe no endereço da requisição.
     estudo = estudo_do_pesquisador(request, id)
-    form = criterio_da_requisicao(request, estudo, variavel_selecionavel(variavel_id), request.GET)
+    form = criterio_da_requisicao(request, estudo, variavel_selecionavel(variavel_id), request.POST)
     completo = form.is_valid()
     contexto = {"completo": completo, "pendencia": form.pendencia(), "frase": form.instance.frase if completo else ""}
     return render(request, "estudos/_previa.html", contexto)

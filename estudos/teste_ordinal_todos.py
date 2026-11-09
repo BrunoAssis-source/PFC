@@ -61,7 +61,7 @@ def test_condicao_que_restringe_e_aceita(cliente, estudo, operador, niveis):
 
 
 def test_previa_avisa_e_nao_libera_o_botao(cliente, estudo):
-    resposta = cliente.get(
+    resposta = cliente.post(
         reverse("estudos:previa_criterio", args=[estudo.id, variavel("escolaridade").id]),
         {"tipo_regra": "inclusao", "operador": "menor_igual", "opcoes": ids(MAIS_ALTO)},
     ).content.decode()
