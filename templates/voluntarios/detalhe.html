@@ -25,7 +25,7 @@
                 <a class="painel-acao" href="{% url 'voluntarios:coleta' voluntario.id p.id %}">Coletar dados</a>
             {% else %}
                 {# O profissional não vê o resultado da verificação, só que a coleta terminou. #}
-                <span class="painel-selo {{ p.situacao }}">{% if p.situacao == "eliminada" %}encerrada{% else %}{{ p.get_situacao_display }}{% endif %}</span>
+                {% if p.situacao == "eliminada" %}<span class="painel-selo encerrada">encerrada</span>{% else %}<span class="painel-selo {{ p.situacao }}">{{ p.get_situacao_display }}</span>{% endif %}
             {% endif %}
         </div>
     {% empty %}
