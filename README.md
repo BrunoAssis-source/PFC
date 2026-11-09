@@ -45,11 +45,28 @@ O voluntário é vinculado a um estudo ativo com o aceite do TCLE. O profissiona
 
 A auditoria registra busca, cadastro, tentativa de cadastro repetido, leitura da ficha e vínculo com TCLE. O objeto do registro leva só os oito primeiros caracteres do código, nunca o CPF.
 
-Faltam os valores coletados e a verificação de elegibilidade. Por isso as telas de registro de dados e pendências existem ainda sem conteúdo.
+Na ficha do voluntário, o botão Coletar dados abre a coleta da participação, uma variável por tela. As variáveis perguntadas são as dos critérios do estudo, com as não sensíveis primeiro e as sensíveis por último, para quem seria eliminado nunca responder uma pergunta sensível. Variável derivada não é perguntada. Idade, faixa etária e renda per capita saem das origens (data de nascimento, renda familiar e pessoas no domicílio) a cada consulta, então a idade acompanha o calendário e nada disso fica gravado.
+
+Cada resposta é gravada e conferida na mesma transação. A conferência é feita no banco, pela view `voluntarios_avaliacao_criterio`, que compara o valor com os critérios do estudo nos 15 operadores. Inclusão exige atender e exclusão exige não atender. Se algum critério reprova, a gravação é desfeita, de modo que a resposta que eliminou nunca fica no banco, e as respostas anteriores, que passaram, ficam. A participação passa a `eliminada` e guarda o critério reprovado. Quando todas as variáveis são respondidas e nenhuma reprova, a participação passa a `concluida`.
+
+O profissional não vê o resultado da verificação. A tela de eliminação diz apenas "Coleta encerrada: este voluntário não é compatível com o estudo.", igual para qualquer critério e para variável comum ou sensível, e a ficha mostra a participação como encerrada. Os testes comparam o conteúdo da tela, o redirecionamento e o número de consultas entre os casos. O critério que eliminou aparece só para o pesquisador, na tela do estudo, junto do código curto do voluntário.
+
+Os valores coletados ficam em linhas (voluntário, variável, valor, fonte, data), ligados ao voluntário só pelo código HMAC. Valor novo da mesma variável é linha nova, e a verificação usa a mais recente.
+
+Variável marcada como sensível (identidade de gênero, orientação sexual, pessoa com deficiência e raça ou cor) vai para a tabela `ValorSensivel`, com a mesma estrutura e sem cifra de coluna. A decisão tem quatro razões. O domínio de cada variável é uma lista fechada, então cifrar o valor esconderia pouco. A verificação e o reaproveitamento entre estudos comparam valores no banco, o que a cifra impediria. A tabela separada isola esses dados do restante. E o acesso é auditado, com o banco cifrado em repouso pelo provedor. A auditoria registra cada resposta a variável sensível, com o código da variável e o código curto do voluntário, nunca o valor.
+
+Faltam a classificação em elegível, pendente ou inelegível nos estudos que reaproveitam dados e a tela de pendências.
 
 O app `auditoria` registra login com sucesso e com falha, logout, criação de conta, redefinição de senha, negação de acesso por perfil insuficiente e leitura ou edição de estudo, e também adição, edição e remoção de critério. Cada registro grava usuário, ação, IP e data. A tela fica em `/auditoria/`, aberta a quem tem `is_staff`, do jeito que o Django admin já reconhece como administrador, sem depender do perfil de pesquisador ou profissional. Pelo admin do Django o mesmo registro aparece sem opção de editar nem excluir. O texto do objeto não tem limite de tamanho, porque na edição de critério o registro guarda a frase antes e depois, e uma lista de municípios passa de 150 caracteres. Se a edição não muda a frase, nada é registrado.
 
-Ainda falta um ponto de auditoria, o acesso a variável marcada como sensível. O campo `sensivel` existe no catálogo, mas nenhuma tela ainda lê ou restringe por ele. O ponto entra na auditoria quando essa funcionalidade existir.
+A leitura de valor sensível por outra tela, como a do pesquisador, ainda não existe. Quando existir, deve entrar na auditoria como a gravação já entra.
+
+### Trabalho futuro na coleta
+
+- Retomada de participação interrompida. A situação `interrompida` existe, mas nenhuma tela a aplica. Hoje a coleta em andamento continua de onde parou ao ser aberta de novo, sem um passo explícito de interromper.
+- Fluxo de fonte confirmada. A fonte é gravada em cada resposta, mas nada ainda distingue fonte confirmada de informada pelo voluntário. O estado pendente dos estudos auxiliares depende disso.
+- Variáveis exigidas além dos critérios. O estudo só pergunta as variáveis que aparecem em critérios.
+- Seleção de município. A lista tem 5.571 opções em uma caixa de seleção única, sem a cascata por estado que a tela de critérios tem.
 
 ### Trabalho futuro na identificação de voluntários
 
