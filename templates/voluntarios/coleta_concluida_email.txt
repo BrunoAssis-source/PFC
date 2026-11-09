@@ -1,0 +1,9 @@
+Olá, {{ pesquisador.nome_completo }}.
+
+Um voluntário atendeu a todos os critérios do estudo {{ estudo.nome }} e a coleta dele foi concluída.
+
+Código do voluntário: {{ codigo }}
+
+Este aviso não traz o CPF nem os valores coletados. Para consultar o estudo, entre no UniData.
+
+Mensagem automática do UniData. Não responda este email.

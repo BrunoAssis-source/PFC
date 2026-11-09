@@ -12,7 +12,7 @@ from autenticacao.permissoes import exige_perfil
 from catalogo.models import OpcaoDominio
 
 from . import cpf as cpf_util
-from .coleta import concluir_se_terminou, proxima_variavel, registrar_resposta
+from .coleta import concluir_se_nao_ha_o_que_perguntar, proxima_variavel, registrar_resposta, respostas_pendentes
 from .forms import CpfForm, RespostaForm, VinculoForm
 from .models import TCLE_VERSAO_ATUAL, Participacao, Voluntario
 
@@ -116,9 +116,10 @@ def coletar(request, id, participacao_id):
     if not em_coleta and participacao.situacao not in (Participacao.Situacao.ELIMINADA, Participacao.Situacao.CONCLUIDA):
         return redirect("voluntarios:detalhe", id=id)
 
-    variavel = proxima_variavel(participacao) if em_coleta else None
+    pendentes = respostas_pendentes(request.session, participacao)
+    variavel = proxima_variavel(participacao, pendentes) if em_coleta else None
     if em_coleta and variavel is None:
-        concluir_se_terminou(participacao)
+        concluir_se_nao_ha_o_que_perguntar(participacao)
         em_coleta = False
 
     if em_coleta and request.method == "POST" and request.POST.get("variavel") == str(variavel.id):
@@ -128,14 +129,16 @@ def coletar(request, id, participacao_id):
                 acao = Acao.SENSIVEL_RESPOSTA
             else:
                 acao = Acao.COLETA_RESPOSTA
-            segue = registrar_resposta(participacao, variavel, form.valores(), form.cleaned_data["fonte"], request.user)
+            resultado = registrar_resposta(
+                participacao, variavel, form.valores(), form.cleaned_data["fonte"], request.user, request.session
+            )
             registrar(
                 acao,
                 request=request,
                 usuario=request.user,
                 objeto=f"{participacao.voluntario.codigo_hmac[:8]} {variavel.codigo}",
             )
-            if not segue:
+            if resultado == "eliminada":
                 registrar(
                     Acao.COLETA_ELIMINACAO,
                     request=request,
@@ -165,7 +168,7 @@ def opcoes_filhas(request, id, participacao_id):
         situacao=Participacao.Situacao.EM_COLETA,
     )
     # Só a variável que está sendo perguntada, senão o endpoint listaria o domínio de qualquer variável.
-    variavel = proxima_variavel(participacao)
+    variavel = proxima_variavel(participacao, respostas_pendentes(request.session, participacao))
     pai = request.GET.get("pai", "")
     if variavel is None or not variavel.dominio_id or not variavel.dominio.superior_id or not pai.isdigit():
         raise Http404

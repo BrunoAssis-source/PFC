@@ -47,7 +47,7 @@ def test_so_lista_filhos_de_um_estado_do_dominio_superior(cliente, participacao)
 
 def test_municipio_escolhido_na_cascata_e_gravado(cliente, participacao):
     municipio = OpcaoDominio.objects.filter(dominio__codigo="municipio").first()
-    variavel = proxima_variavel(participacao)
+    variavel = proxima_variavel(participacao, {})
     cliente.post(
         rota(participacao, "coleta"), {"variavel": variavel.id, "valor": municipio.id, "fonte": "voluntario"}
     )
@@ -55,7 +55,7 @@ def test_municipio_escolhido_na_cascata_e_gravado(cliente, participacao):
 
 
 def test_envio_sem_municipio_pede_a_escolha(cliente, participacao):
-    variavel = proxima_variavel(participacao)
+    variavel = proxima_variavel(participacao, {})
     resposta = cliente.post(rota(participacao, "coleta"), {"variavel": variavel.id, "fonte": "voluntario"})
     assert resposta.status_code == 200
     assert "obrigatório" in resposta.content.decode()

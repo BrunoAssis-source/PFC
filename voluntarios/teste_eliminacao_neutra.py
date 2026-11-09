@@ -33,7 +33,7 @@ def eliminar(cliente, pesquisadora, profissional, caso):
     estudo = novo_estudo(pesquisadora, f"Estudo {caso}")
     CASOS[caso](estudo)
     participacao = nova_participacao(profissional, estudo)
-    variavel = proxima_variavel(participacao)
+    variavel = proxima_variavel(participacao, {})
     url = reverse("voluntarios:coleta", args=[participacao.voluntario_id, participacao.id])
     with CaptureQueriesContext(connection) as consultas:
         resposta = cliente.post(

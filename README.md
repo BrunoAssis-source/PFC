@@ -47,7 +47,9 @@ A auditoria registra busca, cadastro, tentativa de cadastro repetido, leitura da
 
 Na ficha do voluntário, o botão Coletar dados abre a coleta da participação, uma variável por tela. As variáveis perguntadas são as dos critérios do estudo, com as não sensíveis primeiro e as sensíveis por último, para quem seria eliminado nunca responder uma pergunta sensível. Variável derivada não é perguntada. Idade, faixa etária e renda per capita saem das origens (data de nascimento, renda familiar e pessoas no domicílio) a cada consulta, então a idade acompanha o calendário e nada disso fica gravado.
 
-Cada resposta é gravada e conferida na mesma transação. A conferência é feita no banco, pela view `voluntarios_avaliacao_criterio`, que compara o valor com os critérios do estudo nos 15 operadores. Inclusão exige atender e exclusão exige não atender. Se algum critério reprova, a gravação é desfeita, de modo que a resposta que eliminou nunca fica no banco, e as respostas anteriores, que passaram, ficam. A participação passa a `eliminada` e guarda o critério reprovado. Quando todas as variáveis são respondidas e nenhuma reprova, a participação passa a `concluida`.
+Nada é gravado até todos os critérios serem atendidos. Cada resposta é conferida com as anteriores dentro de uma transação que o sistema sempre desfaz, a não ser na última resposta. A conferência é feita no banco, pela view `voluntarios_avaliacao_criterio`, que compara os valores com os critérios do estudo nos 15 operadores. Inclusão exige atender e exclusão exige não atender. Enquanto a coleta está em andamento, as respostas já aceitas ficam só na sessão do profissional. Se um critério reprova, a coleta acaba, a sessão é limpa e nenhum valor é gravado, nem os das respostas anteriores. A participação passa a `eliminada` e guarda o critério reprovado. Quando a última resposta passa, todos os valores são gravados de uma vez, a participação passa a `concluida` e o pesquisador do estudo recebe um email. O email leva só o nome do estudo e o código curto do voluntário, sem CPF e sem valores, e uma falha no envio fica no log sem desfazer a coleta.
+
+Enquanto a coleta não termina, as respostas ficam na sessão do servidor (tabela de sessões do Django) e saem de lá ao concluir, ao eliminar ou quando a sessão expira. Uma coleta abandonada deixa as respostas na sessão até ela expirar.
 
 O profissional não vê o resultado da verificação. A tela de eliminação diz apenas "Coleta encerrada: este voluntário não é compatível com o estudo.", igual para qualquer critério e para variável comum ou sensível, e a ficha mostra a participação como encerrada. Os testes comparam o conteúdo da tela, o redirecionamento e o número de consultas entre os casos. O critério que eliminou aparece só para o pesquisador, na tela do estudo, junto do código curto do voluntário.
 
@@ -65,7 +67,7 @@ A leitura de valor sensível por outra tela, como a do pesquisador, ainda não e
 
 ### Trabalho futuro na coleta
 
-- Retomada de participação interrompida. A situação `interrompida` existe, mas nenhuma tela a aplica. Hoje a coleta em andamento continua de onde parou ao ser aberta de novo, sem um passo explícito de interromper.
+- Retomada de participação interrompida. A situação `interrompida` existe, mas nenhuma tela a aplica. Hoje a coleta em andamento continua de onde parou enquanto a sessão do profissional vale, e recomeça do primeiro campo se a sessão expira.
 - Fluxo de fonte confirmada. A fonte é gravada em cada resposta, mas nada ainda distingue fonte confirmada de informada pelo voluntário. O estado pendente dos estudos auxiliares depende disso.
 - Variáveis exigidas além dos critérios. O estudo só pergunta as variáveis que aparecem em critérios.
 

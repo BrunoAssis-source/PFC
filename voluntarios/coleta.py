@@ -1,13 +1,21 @@
-from django.db import connection, transaction
-from django.utils import timezone
+import logging
+from datetime import date
+from decimal import Decimal
 
-from catalogo.models import Variavel
+from django.core.mail import EmailMultiAlternatives
+from django.db import connection, transaction
+from django.template.loader import render_to_string
+from django.utils import timezone
 
 from .models import Participacao, ValorColetado, ValorSensivel
 
+logger = logging.getLogger(__name__)
 
-class _Reprovado(Exception):
-    def __init__(self, criterio_id):
+
+class _Desfazer(Exception):
+    """Desfaz a transação de conferência. Nada da coleta chega a ser gravado."""
+
+    def __init__(self, criterio_id=None):
         self.criterio_id = criterio_id
 
 
@@ -27,13 +35,41 @@ def variaveis_da_coleta(estudo):
     return sorted(perguntadas.values(), key=lambda v: (v.sensivel, v.subcategoria_id, v.codigo))
 
 
-def proxima_variavel(participacao):
-    respondidas = set(ValorColetado.objects.filter(participacao=participacao).values_list("variavel_id", flat=True))
-    respondidas |= set(ValorSensivel.objects.filter(participacao=participacao).values_list("variavel_id", flat=True))
+def chave_da_sessao(participacao):
+    return f"coleta_{participacao.id}"
+
+
+def respostas_pendentes(sessao, participacao):
+    """Respostas já aceitas pela conferência e ainda não gravadas, guardadas na sessão do profissional."""
+    return dict(sessao.get(chave_da_sessao(participacao), {}))
+
+
+def proxima_variavel(participacao, pendentes):
     for variavel in variaveis_da_coleta(participacao.estudo):
-        if variavel.id not in respondidas:
+        if str(variavel.id) not in pendentes:
             return variavel
     return None
+
+
+def _serializar(valores, fonte):
+    campos = {}
+    for nome, valor in valores.items():
+        if nome == "opcao":
+            campos["opcao_id"] = valor.id
+        elif isinstance(valor, date):
+            campos[nome] = valor.isoformat()
+        else:
+            campos[nome] = str(valor) if isinstance(valor, Decimal) else valor
+    return {"valores": campos, "fonte": fonte}
+
+
+def _valores_do_modelo(campos):
+    valores = dict(campos)
+    if "valor_numero" in valores:
+        valores["valor_numero"] = Decimal(valores["valor_numero"])
+    if "valor_data" in valores:
+        valores["valor_data"] = date.fromisoformat(valores["valor_data"])
+    return valores
 
 
 def _criterio_reprovado(participacao):
@@ -47,37 +83,77 @@ def _criterio_reprovado(participacao):
     return linha[0] if linha else None
 
 
-def registrar_resposta(participacao, variavel, valores, fonte, usuario):
-    """Grava a resposta e confere todos os critérios do estudo. Devolve True se o voluntário continua elegível.
+def registrar_resposta(participacao, variavel, valores, fonte, usuario, sessao):
+    """Confere a resposta com as anteriores e devolve "continua", "concluida" ou "eliminada".
 
-    A conferência roda dentro da gravação. Se algum critério reprova, a gravação é desfeita e só a participação
-    guarda o motivo. Comum e sensível seguem o mesmo caminho, para a resposta ao profissional não diferir.
+    RN24: nada é gravado até que todos os critérios estejam atendidos. A conferência insere as respostas dentro de
+    uma transação para a view SQL compará-las com os critérios e sempre desfaz, salvo na última resposta. Reprovou
+    em qualquer ponto, a coleta acaba sem gravar nenhum valor, nem os anteriores. Comum e sensível seguem o mesmo
+    caminho, para a resposta ao profissional não diferir.
     """
-    modelo = ValorSensivel if variavel.sensivel else ValorColetado
+    chave = chave_da_sessao(participacao)
+    respostas = respostas_pendentes(sessao, participacao)
+    respostas[str(variavel.id)] = _serializar(valores, fonte)
+    perguntadas = variaveis_da_coleta(participacao.estudo)
+    sensiveis = {str(v.id) for v in perguntadas if v.sensivel}
+    completa = all(str(v.id) in respostas for v in perguntadas)
     try:
         with transaction.atomic():
-            modelo.objects.create(
-                codigo_voluntario=participacao.voluntario.codigo_hmac,
-                variavel=variavel,
-                fonte=fonte,
-                participacao=participacao,
-                coletado_por=usuario,
-                **valores,
-            )
+            for variavel_id, resposta in respostas.items():
+                modelo = ValorSensivel if variavel_id in sensiveis else ValorColetado
+                modelo.objects.create(
+                    codigo_voluntario=participacao.voluntario.codigo_hmac,
+                    variavel_id=int(variavel_id),
+                    fonte=resposta["fonte"],
+                    participacao=participacao,
+                    coletado_por=usuario,
+                    **_valores_do_modelo(resposta["valores"]),
+                )
             reprovado = _criterio_reprovado(participacao)
-            if reprovado:
-                raise _Reprovado(reprovado)
-    except _Reprovado as erro:
-        participacao.situacao = Participacao.Situacao.ELIMINADA
-        participacao.criterio_reprovado_id = erro.criterio_id
-        participacao.encerrada_em = timezone.now()
-        participacao.save(update_fields=["situacao", "criterio_reprovado", "encerrada_em"])
-        return False
-    return True
+            if reprovado or not completa:
+                raise _Desfazer(reprovado)
+    except _Desfazer as erro:
+        if erro.criterio_id:
+            sessao.pop(chave, None)
+            participacao.situacao = Participacao.Situacao.ELIMINADA
+            participacao.criterio_reprovado_id = erro.criterio_id
+            participacao.encerrada_em = timezone.now()
+            participacao.save(update_fields=["situacao", "criterio_reprovado", "encerrada_em"])
+            return "eliminada"
+        sessao[chave] = respostas
+        return "continua"
+    sessao.pop(chave, None)
+    concluir(participacao)
+    return "concluida"
 
 
-def concluir_se_terminou(participacao):
-    if participacao.situacao == Participacao.Situacao.EM_COLETA and proxima_variavel(participacao) is None:
-        participacao.situacao = Participacao.Situacao.CONCLUIDA
-        participacao.encerrada_em = timezone.now()
-        participacao.save(update_fields=["situacao", "encerrada_em"])
+def concluir(participacao):
+    participacao.situacao = Participacao.Situacao.CONCLUIDA
+    participacao.encerrada_em = timezone.now()
+    participacao.save(update_fields=["situacao", "encerrada_em"])
+    notificar_pesquisador(participacao)
+
+
+def concluir_se_nao_ha_o_que_perguntar(participacao):
+    if participacao.situacao == Participacao.Situacao.EM_COLETA and not variaveis_da_coleta(participacao.estudo):
+        concluir(participacao)
+
+
+def notificar_pesquisador(participacao):
+    """RF09 CA02. O email leva só o estudo e o código curto, nunca o CPF nem os valores coletados."""
+    estudo = participacao.estudo
+    contexto = {
+        "pesquisador": estudo.pesquisador,
+        "estudo": estudo,
+        "codigo": participacao.voluntario.codigo_hmac[:8],
+    }
+    mensagem = EmailMultiAlternatives(
+        f"Coleta concluída no estudo {estudo.nome}",
+        render_to_string("voluntarios/coleta_concluida_email.txt", contexto),
+        to=[estudo.pesquisador.email],
+    )
+    try:
+        mensagem.send()
+    except Exception:
+        # A coleta já foi gravada, então a falha do envio não a desfaz.
+        logger.exception("Falha ao notificar o pesquisador da coleta concluída.")
