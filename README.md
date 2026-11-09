@@ -29,6 +29,8 @@ Cada critério é de inclusão ou de exclusão, e a condição muda conforme o t
 
 Uma caixa "Como vai ficar" mostra a frase do critério enquanto ele é montado, por exemplo "Incluir participantes com idade entre 18 e 65 anos." O botão de adicionar só habilita quando a condição está completa, e o aviso diz o que falta. A frase e a validação vêm do servidor, do mesmo formulário que grava o critério, para existirem num lugar só. À direita, o resumo reúne tudo em texto corrido. A idade é uma variável só, em anos. Data de nascimento e faixa etária ficam fora da tela, e o pesquisador nunca informa datas.
 
+Município de residência é escolhido em cascata: primeiro o estado, depois os municípios dele, com filtro pelo nome. A seleção atravessa estados, então um mesmo critério pode juntar cidades de lugares diferentes. A lista é a oficial do IBGE (27 estados e 5.571 municípios, consultada em novembro de 2026) e está em `catalogo/dados/`, carregada por migration como dado fixo do sistema. Em funcionamento a aplicação não consulta nenhuma API externa, e para atualizar a lista basta gerar os dois arquivos de novo a partir da API de localidades do IBGE e criar uma migration.
+
 O mesmo critério pode se repetir no estudo, por exemplo idade mínima na inclusão e idade máxima na exclusão. Variável de texto livre não serve de critério.
 
 Faltam o cadastro de voluntários, os valores coletados e a verificação de elegibilidade. Por isso as telas do profissional, registro de dados e pendências, existem ainda sem conteúdo.

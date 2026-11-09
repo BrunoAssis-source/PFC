@@ -67,12 +67,23 @@ class CriterioForm(forms.ModelForm):
         self.instance.variavel = self.variavel
         self.instance.operador = dados.get("operador", "")
         if "opcoes" in self.fields and "operador" in dados:
-            self.instance.opcoes_em_memoria = list(dados.get("opcoes") or [])
+            escolhidas = list(dados.get("opcoes") or [])
+            self.instance.opcoes_em_memoria = escolhidas
             try:
                 self.instance.validar_opcoes()
             except ValidationError as erro:
                 self.add_error(None, erro)
+            else:
+                self.recusar_todas_as_opcoes(dados, escolhidas)
         return dados
+
+    def recusar_todas_as_opcoes(self, dados, escolhidas):
+        # Marcar todas as opções de uma lista não restringe ninguém: na inclusão
+        # aceita todo mundo, na exclusão barra todo mundo.
+        if dados["operador"] != Operador.ESTA_EM or len(escolhidas) != self.fields["opcoes"].queryset.count():
+            return
+        verbo = "exclui" if dados.get("tipo_regra") == Criterio.TipoRegra.EXCLUSAO else "inclui"
+        self.add_error("opcoes", f"Esse critério {verbo} todos os participantes.")
 
     def pendencia(self):
         for erros in self.errors.values():

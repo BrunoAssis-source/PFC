@@ -1,8 +1,10 @@
+from decimal import Decimal
+
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 
-from catalogo.models import OPERADORES, Operador, Variavel
+from catalogo.models import OPERADORES, Operador, Variavel, formatar_numero
 
 
 class Estudo(models.Model):
@@ -96,31 +98,16 @@ class Criterio(models.Model):
         ordering = ["tipo_regra", "variavel__codigo"]
 
     def __str__(self):
-        return self.enunciado
+        return self.descricao
 
-    @staticmethod
-    def numero(valor):
-        return f"{valor.normalize():f}"
-
-    @property
-    def enunciado(self):
-        rotulo = Operador(self.operador).label
-        if self.operador in (Operador.VERDADEIRO, Operador.FALSO):
-            return f"{self.variavel.nome} {rotulo}"
-        if self.operador == Operador.ENTRE:
-            if self.valor_numero is not None:
-                return f"{self.variavel.nome} entre {self.numero(self.valor_numero)} e {self.numero(self.valor_numero_ate)} {self.variavel.unidade}"
-            if self.valor_data is not None:
-                return (
-                    f"{self.variavel.nome} entre {self.data_formatada(self.valor_data)} "
-                    f"e {self.data_formatada(self.valor_data_ate)}"
-                )
-            return f"{self.variavel.nome} entre {self.lista_de_opcoes}"
-        if self.valor_numero is not None:
-            return f"{self.variavel.nome} {rotulo} {self.numero(self.valor_numero)} {self.variavel.unidade}".strip()
-        if self.valor_data is not None:
-            return f"{self.variavel.nome} {rotulo} {self.data_formatada(self.valor_data)}"
-        return f"{self.variavel.nome} {rotulo} {self.lista_de_opcoes}"
+    def texto_valor(self, valor, com_unidade=True):
+        """Valor numérico como o pesquisador lê: R$ 3.000 para renda, 18 anos para o resto."""
+        variavel = self.variavel
+        if variavel.em_reais:
+            valor = Decimal(str(valor))
+            return "R$ " + formatar_numero(valor, 0 if valor == valor.to_integral_value() else 2)
+        texto = formatar_numero(valor)
+        return f"{texto} {variavel.unidade}" if com_unidade and variavel.unidade else texto
 
     @property
     def frase(self):
@@ -143,14 +130,13 @@ class Criterio(models.Model):
     @property
     def condicao(self):
         operador = self.operador
-        unidade = f" {self.variavel.unidade}" if self.variavel.unidade else ""
         if operador in (Operador.VERDADEIRO, Operador.FALSO):
             return ": sim" if operador == Operador.VERDADEIRO else ": não"
 
         if self.valor_numero is not None:
-            valor = self.numero(self.valor_numero)
             if operador == Operador.ENTRE:
-                return f"entre {valor} e {self.numero(self.valor_numero_ate)}{unidade}"
+                inicio = self.texto_valor(self.valor_numero, com_unidade=False)
+                return f"entre {inicio} e {self.texto_valor(self.valor_numero_ate)}"
             texto = {
                 Operador.IGUAL: "igual a",
                 Operador.DIFERENTE: "diferente de",
@@ -159,7 +145,7 @@ class Criterio(models.Model):
                 Operador.MAIOR: "acima de",
                 Operador.MENOR: "abaixo de",
             }[operador]
-            return f"{texto} {valor}{unidade}"
+            return f"{texto} {self.texto_valor(self.valor_numero)}"
 
         if self.valor_data is not None:
             inicio = self.data_formatada(self.valor_data)
@@ -199,10 +185,6 @@ class Criterio(models.Model):
             return f"{valor.month:02d}/{valor.year}"
         return f"{valor.day:02d}/{valor.month:02d}/{valor.year}"
 
-    @property
-    def lista_de_opcoes(self):
-        return ", ".join(opcao.rotulo for opcao in self.opcoes.all())
-
     def clean(self):
         if self.variavel_id and self.operador not in OPERADORES[self.variavel.tipo]:
             raise ValidationError({"operador": "Este operador não vale para o tipo da variável."})
@@ -210,13 +192,13 @@ class Criterio(models.Model):
         tipo = self.variavel.tipo if self.variavel_id else None
 
         if tipo == Variavel.Tipo.NUMERICA:
-            if self.valor_numero is None:
-                raise ValidationError({"valor_numero": "Informe o valor de referência."})
             if self.operador == Operador.ENTRE:
-                if self.valor_numero_ate is None:
-                    raise ValidationError({"valor_numero_ate": "O operador entre exige dois valores."})
+                if self.valor_numero is None or self.valor_numero_ate is None:
+                    raise ValidationError({"valor_numero": "Informe os dois valores."})
                 if self.valor_numero >= self.valor_numero_ate:
                     raise ValidationError({"valor_numero_ate": "O segundo valor precisa ser maior que o primeiro."})
+            elif self.valor_numero is None:
+                raise ValidationError({"valor_numero": "Informe o valor."})
             self.validar_faixa()
 
         if tipo == Variavel.Tipo.DATA:

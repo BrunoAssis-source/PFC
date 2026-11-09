@@ -77,11 +77,34 @@
         });
     }
 
+    function botaoDaArvore(endereco) {
+        return arvore.querySelector('.variavel-botao[data-url="' + endereco + '"]');
+    }
+
+    // Escolher pela busca leva de volta à árvore, com só o grupo da variável aberto.
+    function revelarNaArvore(botao) {
+        busca.value = "";
+        resultados.hidden = true;
+        arvore.hidden = false;
+        arvore.querySelectorAll("details").forEach(function (grupo) {
+            grupo.open = false;
+        });
+        botao.closest("details").open = true;
+        if (botao.scrollIntoView) {
+            botao.scrollIntoView({ block: "nearest" });
+        }
+    }
+
     tela.addEventListener("click", function (evento) {
         var botao = evento.target.closest(".variavel-botao");
-        if (botao && botao.dataset.url) {
-            abrirConfiguracao(botao.dataset.url, botao);
+        if (!botao || !botao.dataset.url) {
+            return;
         }
+        if (resultados.contains(botao)) {
+            botao = botaoDaArvore(botao.dataset.url);
+            revelarNaArvore(botao);
+        }
+        abrirConfiguracao(botao.dataset.url, botao);
     });
 
     function dadosDoFormulario(form) {
@@ -124,7 +147,107 @@
         }, 150);
     }
 
+    function semAcento(texto) {
+        return texto.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+    }
+
+    // Estado primeiro, municípios depois. Os escolhidos ficam como etiquetas com
+    // um campo oculto cada, para a seleção sobreviver à troca de estado.
+    function iniciarCascata(form) {
+        var bloco = form.querySelector("[data-cascata]");
+        if (!bloco) {
+            return;
+        }
+        var pai = bloco.querySelector("#cascata-pai");
+        var filtro = bloco.querySelector("#cascata-filtro");
+        var lista = bloco.querySelector("#cascata-lista");
+        var escolhidos = bloco.querySelector("#cascata-escolhidos");
+        var vazio = escolhidos.innerHTML;
+
+        function sincronizar() {
+            lista.querySelectorAll('input[type="checkbox"]').forEach(function (caixa) {
+                caixa.checked = !!escolhidos.querySelector('input[value="' + caixa.value + '"]');
+            });
+            if (!escolhidos.children.length) {
+                escolhidos.innerHTML = vazio;
+            }
+        }
+
+        function adicionar(caixa) {
+            if (escolhidos.querySelector('input[value="' + caixa.value + '"]')) {
+                return;
+            }
+            if (!escolhidos.querySelector(".etiqueta")) {
+                escolhidos.innerHTML = "";
+            }
+            var etiqueta = document.createElement("span");
+            etiqueta.className = "etiqueta";
+            var campo = document.createElement("input");
+            campo.type = "hidden";
+            campo.name = "opcoes";
+            campo.value = caixa.value;
+            var rotulo = document.createElement("span");
+            rotulo.textContent = caixa.parentNode.textContent.trim();
+            var remover = document.createElement("button");
+            remover.type = "button";
+            remover.setAttribute("aria-label", "Remover " + rotulo.textContent);
+            remover.textContent = "×";
+            etiqueta.append(campo, rotulo, remover);
+            escolhidos.appendChild(etiqueta);
+        }
+
+        pai.addEventListener("change", function () {
+            filtro.value = "";
+            filtro.disabled = !pai.value;
+            if (!pai.value) {
+                lista.innerHTML = "";
+                return;
+            }
+            pegar(bloco.dataset.opcoesUrl + "?pai=" + pai.value).then(function (html) {
+                lista.innerHTML = html;
+                sincronizar();
+            });
+        });
+
+        filtro.addEventListener("input", function () {
+            var termo = semAcento(filtro.value.trim());
+            lista.querySelectorAll(".escolha").forEach(function (item) {
+                item.hidden = semAcento(item.textContent).indexOf(termo) < 0;
+            });
+        });
+
+        lista.addEventListener("change", function (evento) {
+            var caixa = evento.target;
+            if (caixa.checked) {
+                adicionar(caixa);
+            } else {
+                var campo = escolhidos.querySelector('input[value="' + caixa.value + '"]');
+                if (campo) {
+                    campo.parentNode.remove();
+                }
+            }
+            sincronizar();
+            agendarPrevia(form);
+        });
+
+        escolhidos.addEventListener("click", function (evento) {
+            var etiqueta = evento.target.closest(".etiqueta");
+            if (etiqueta && evento.target.closest("button")) {
+                etiqueta.remove();
+                sincronizar();
+                agendarPrevia(form);
+            }
+        });
+
+        bloco.querySelector("[data-limpar-cascata]").addEventListener("click", function () {
+            escolhidos.innerHTML = vazio;
+            sincronizar();
+            agendarPrevia(form);
+        });
+    }
+
     function iniciarFormulario(form) {
+        iniciarCascata(form);
         ajustarValores(form);
         atualizarPrevia(form);
 
@@ -184,6 +307,6 @@
     });
 
     if (tela.dataset.configuracaoInicial) {
-        abrirConfiguracao(tela.dataset.configuracaoInicial, null);
+        abrirConfiguracao(tela.dataset.configuracaoInicial, botaoDaArvore(tela.dataset.configuracaoInicial));
     }
 })();

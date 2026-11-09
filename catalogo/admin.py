@@ -27,7 +27,11 @@ class CategoriaAdmin(admin.ModelAdmin):
 @admin.register(Dominio)
 class DominioAdmin(admin.ModelAdmin):
     list_display = ("codigo", "nome", "ordinal")
-    inlines = [OpcaoInline]
+
+    def get_inlines(self, request, obj=None):
+        # O domínio de municípios tem milhares de opções, e uma linha editável
+        # para cada uma travaria a página.
+        return [] if obj and obj.superior_id else [OpcaoInline]
 
 
 @admin.register(Variavel)

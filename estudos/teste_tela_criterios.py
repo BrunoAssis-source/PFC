@@ -2,6 +2,7 @@ import pytest
 from django.urls import reverse
 
 from autenticacao.models import Usuario
+from catalogo.models import OpcaoDominio
 from estudos.conftest import gravar, opcoes, variavel
 from estudos.models import Criterio
 
@@ -32,7 +33,7 @@ def test_pagina_mostra_a_arvore_sem_codigos_internos(cliente, estudo):
 def test_arvore_abre_com_todos_os_grupos_fechados(cliente, estudo):
     html = cliente.get(endereco("criterios", estudo)).content.decode()
 
-    assert '<details class="arvore-grupo">' in html
+    assert html.count('class="arvore-grupo"') >= 4
     assert 'arvore-grupo" open' not in html
 
 
@@ -73,7 +74,7 @@ def test_configuracao_muda_conforme_o_tipo(cliente, estudo, codigo, trecho):
     assert trecho in resposta.content.decode()
 
 
-@pytest.mark.parametrize("codigo", ["data_nascimento", "faixa_etaria", "municipio_residencia"])
+@pytest.mark.parametrize("codigo", ["data_nascimento", "faixa_etaria", "ocupacao"])
 def test_variavel_fora_do_seletor_nao_abre_configuracao(cliente, estudo, codigo):
     resposta = cliente.get(endereco("configurar_criterio", estudo, variavel(codigo).id))
 
@@ -87,11 +88,43 @@ def test_previa_mostra_a_frase_quando_a_condicao_esta_completa(cliente, estudo):
     assert "Incluir participantes com idade entre 18 e 65 anos." in html
 
 
-def test_previa_diz_o_que_falta(cliente, estudo):
-    html = previa(cliente, estudo, "idade_anos", {"tipo_regra": "inclusao", "operador": "entre", "valor_numero": "18"})
+@pytest.mark.parametrize(
+    "dados",
+    [
+        {"operador": "entre"},
+        {"operador": "entre", "valor_numero": "18"},
+        {"operador": "entre", "valor_numero_ate": "65"},
+    ],
+)
+def test_previa_com_entre_pede_os_dois_valores(cliente, estudo, dados):
+    html = previa(cliente, estudo, "idade_anos", {"tipo_regra": "inclusao", **dados})
 
     assert 'data-completo="0"' in html
-    assert "O operador entre exige dois valores." in html
+    assert "Informe os dois valores." in html
+
+
+@pytest.mark.parametrize("operador", ["maior_igual", "menor_igual", "igual"])
+def test_previa_com_as_outras_condicoes_pede_o_valor(cliente, estudo, operador):
+    html = previa(cliente, estudo, "idade_anos", {"tipo_regra": "inclusao", "operador": operador})
+
+    assert 'data-completo="0"' in html
+    assert "Informe o valor." in html
+    assert "Informe os dois valores." not in html
+
+
+def test_previa_formata_a_renda_em_reais(cliente, estudo):
+    html = previa(
+        cliente, estudo, "renda_familiar_mensal",
+        {"tipo_regra": "inclusao", "operador": "entre", "valor_numero": "1000", "valor_numero_ate": "3000"},
+    )
+
+    assert "Incluir participantes com renda familiar entre R$ 1.000 e R$ 3.000." in html
+
+
+def test_configuracao_mostra_a_faixa_da_renda_no_padrao_brasileiro(cliente, estudo):
+    html = cliente.get(endereco("configurar_criterio", estudo, variavel("renda_familiar_mensal").id)).content.decode()
+
+    assert "de R$ 0 a R$ 100.000" in html
 
 
 def test_previa_nao_grava_nada(cliente, estudo):
@@ -133,7 +166,7 @@ def test_adicionar_incompleto_responde_422_e_nao_grava(cliente, estudo):
     resposta = adicionar(cliente, estudo, "idade_anos", {"tipo_regra": "inclusao", "operador": "entre", "valor_numero": "18"})
 
     assert resposta.status_code == 422
-    assert "O operador entre exige dois valores." in resposta.content.decode()
+    assert "Informe os dois valores." in resposta.content.decode()
     assert Criterio.objects.count() == 0
 
 
@@ -228,3 +261,96 @@ def test_visitante_vai_para_o_login_em_toda_rota(client, estudo):
         resposta = getattr(client, metodo)(rota)
         assert resposta.status_code == 302 and resposta.url.startswith("/?next="), rota
     assert Criterio.objects.count() == 1
+
+
+def marcadas(codigo_do_dominio):
+    return [opcao.id for opcao in OpcaoDominio.objects.filter(dominio__codigo=codigo_do_dominio)]
+
+
+def test_previa_avisa_quando_todas_as_opcoes_estao_marcadas(cliente, estudo):
+    html = previa(
+        cliente, estudo, "orientacao_sexual",
+        {"tipo_regra": "inclusao", "operador": "esta_em", "opcoes": marcadas("orientacao_sexual")},
+    )
+
+    assert 'data-completo="0"' in html
+    assert "Esse critério inclui todos os participantes." in html
+
+
+def test_previa_de_exclusao_avisa_que_exclui_todos(cliente, estudo):
+    html = previa(
+        cliente, estudo, "orientacao_sexual",
+        {"tipo_regra": "exclusao", "operador": "esta_em", "opcoes": marcadas("orientacao_sexual")},
+    )
+
+    assert "Esse critério exclui todos os participantes." in html
+
+
+def test_adicionar_com_todas_as_opcoes_marcadas_nao_grava(cliente, estudo):
+    resposta = adicionar(
+        cliente, estudo, "orientacao_sexual",
+        {"tipo_regra": "inclusao", "operador": "esta_em", "opcoes": marcadas("orientacao_sexual")},
+    )
+
+    assert resposta.status_code == 422
+    assert "Esse critério inclui todos os participantes." in resposta.content.decode()
+    assert Criterio.objects.count() == 0
+
+
+def test_botao_todas_aparece_com_tres_ou_mais_opcoes(cliente, estudo):
+    html = cliente.get(endereco("configurar_criterio", estudo, variavel("orientacao_sexual").id)).content.decode()
+
+    assert 'data-marcar="todas"' in html
+    assert 'data-marcar="limpar"' in html
+
+
+def test_botao_todas_some_com_so_duas_opcoes(cliente, estudo):
+    html = cliente.get(endereco("configurar_criterio", estudo, variavel("zona_residencia").id)).content.decode()
+
+    assert 'data-marcar="todas"' not in html
+    assert 'data-marcar="limpar"' in html
+
+
+def abrir_variavel(cliente, estudo, codigo):
+    return cliente.get(endereco("criterios", estudo), {"variavel": variavel(codigo).id}).content.decode()
+
+
+def test_variavel_vinda_do_link_abre_so_o_grupo_dela(cliente, estudo):
+    html = abrir_variavel(cliente, estudo, "estado_civil")
+
+    assert html.count('arvore-grupo" open') == 1
+    grupo_aberto = html.split('arvore-grupo" open')[1].split("</details>")[0]
+    assert "Estado civil" in grupo_aberto
+    assert "Orientação sexual" not in grupo_aberto
+
+
+def test_variavel_vinda_do_link_fica_marcada_e_com_a_configuracao_pedida(cliente, estudo):
+    html = abrir_variavel(cliente, estudo, "estado_civil")
+    destino = endereco("configurar_criterio", estudo, variavel("estado_civil").id)
+
+    assert f'data-configuracao-inicial="{destino}"' in html
+    assert html.count('aria-current="true"') == 1
+
+
+@pytest.mark.parametrize("variavel_id", ["999999", "abc", ""])
+def test_link_com_variavel_invalida_nao_abre_nada(cliente, estudo, variavel_id):
+    html = cliente.get(endereco("criterios", estudo), {"variavel": variavel_id}).content.decode()
+
+    assert "data-configuracao-inicial" not in html
+    assert 'arvore-grupo" open' not in html
+
+
+def test_link_com_variavel_fora_do_seletor_nao_abre_nada(cliente, estudo):
+    html = abrir_variavel(cliente, estudo, "data_nascimento")
+
+    assert "data-configuracao-inicial" not in html
+
+
+def test_resultado_da_busca_aponta_para_o_mesmo_botao_da_arvore(cliente, estudo):
+    # O script leva o pesquisador da busca ao grupo na árvore procurando o botão pelo endereço.
+    destino = endereco("configurar_criterio", estudo, variavel("escolaridade").id)
+    arvore = cliente.get(endereco("criterios", estudo)).content.decode()
+    busca = cliente.get(endereco("buscar_variaveis", estudo), {"q": "escolaridade"}).content.decode()
+
+    assert f'data-url="{destino}"' in arvore
+    assert f'data-url="{destino}"' in busca

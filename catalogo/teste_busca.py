@@ -57,8 +57,7 @@ def test_variavel_de_texto_livre_fica_fora():
 
 
 def test_variavel_categorica_sem_dominio_fica_fora():
-    # Município e ocupação dependem de tabela de referência que ainda não existe.
-    assert "Município" not in rotulos("município")
+    # A ocupação depende de uma tabela da CBO que não existe no sistema.
     assert "Ocupação" not in rotulos("profissão")
 
 
@@ -73,4 +72,17 @@ def test_resultado_traz_caminho_e_tipo():
     variavel = buscar_criterios("idade").first()
 
     assert variavel.caminho == "Perfil sociodemográfico › Identificação básica"
-    assert variavel.tipo_resumido == "número"
+    assert variavel.tipo_resumido == "valor"
+
+
+@pytest.mark.parametrize(
+    "codigo, rotulo",
+    [
+        ("idade_anos", "valor"),
+        ("orientacao_sexual", "opções"),
+        ("escolaridade", "níveis"),
+        ("cuidador_de_dependente", "sim ou não"),
+    ],
+)
+def test_rotulo_de_tipo_mostrado_na_arvore(codigo, rotulo):
+    assert Variavel.objects.get(codigo=codigo).tipo_resumido == rotulo

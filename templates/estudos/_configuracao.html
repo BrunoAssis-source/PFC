@@ -6,7 +6,7 @@
     <p class="config-caminho">{{ variavel.caminho }}</p>
     <h2 class="config-titulo">{{ variavel.rotulo }}</h2>
     <p class="config-tipo">
-        Tipo: {{ variavel.tipo_resumido }}{% if variavel.minimo is not None %}, de {{ variavel.minimo|floatformat:"-2" }} a {{ variavel.maximo|floatformat:"-2" }} {{ variavel.unidade }}{% endif %}.
+        Tipo: {{ variavel.tipo_resumido }}{% if variavel.faixa %}, {{ variavel.faixa }}{% endif %}.
         {% if variavel.definicao %}{{ variavel.definicao }}{% endif %}
     </p>
 
@@ -55,13 +55,34 @@
             </div>
         </fieldset>
 
+    {% elif variavel.tipo == "nominal" and variavel.dominio.superior_id %}
+        <input type="hidden" name="operador" value="esta_em">
+        <fieldset class="config-grupo" data-cascata data-opcoes-url="{% url 'estudos:opcoes_filhas' estudo.id variavel.id %}">
+            <legend>Estado e município</legend>
+            <label class="form-label" for="cascata-pai">Primeiro o estado</label>
+            <select id="cascata-pai" class="form-select">
+                <option value="">Escolha o estado</option>
+                {% for estado in variavel.dominio.superior.opcoes.all %}
+                    <option value="{{ estado.pk }}">{{ estado.rotulo }}</option>
+                {% endfor %}
+            </select>
+            <label class="form-label mt-3" for="cascata-filtro">Depois os municípios</label>
+            <input type="search" id="cascata-filtro" class="form-control" placeholder="Filtrar pelo nome" autocomplete="off" disabled>
+            <div id="cascata-lista" class="escolhas caixas cascata-lista"></div>
+            <div class="config-cabeca mt-3">
+                <p class="previa-rotulo m-0">Escolhidos</p>
+                <div class="opcoes-botoes"><button type="button" data-limpar-cascata>Limpar</button></div>
+            </div>
+            <div id="cascata-escolhidos" class="cascata-escolhidos"><span class="regras-vazio">Nenhum município escolhido.</span></div>
+        </fieldset>
+
     {% elif variavel.tipo == "nominal" %}
         <input type="hidden" name="operador" value="esta_em">
         <fieldset class="config-grupo">
             <div class="config-cabeca">
                 <legend>Marque as opções</legend>
                 <div class="opcoes-botoes">
-                    <button type="button" data-marcar="todas">Todas</button>
+                    {% if form.fields.opcoes.queryset|length > 2 %}<button type="button" data-marcar="todas">Todas</button>{% endif %}
                     <button type="button" data-marcar="limpar">Limpar</button>
                 </div>
             </div>

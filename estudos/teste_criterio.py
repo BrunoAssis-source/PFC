@@ -3,7 +3,7 @@ from decimal import Decimal
 import pytest
 from django.core.exceptions import ValidationError
 
-from catalogo.models import Variavel
+from catalogo.models import OpcaoDominio, Variavel
 from estudos.conftest import gravar, opcoes, variavel
 from estudos.forms import CriterioForm
 from estudos.models import Criterio
@@ -31,10 +31,48 @@ def test_frase_de_variavel_numerica(estudo, operador, valor, ate, esperado):
     assert criterio.frase == esperado
 
 
-def test_numero_decimal_aparece_sem_zeros_a_direita(estudo):
-    criterio = gravar(estudo, "renda_familiar_mensal", "maior_igual", valor_numero=Decimal("2500.50"))
+@pytest.mark.parametrize(
+    "operador, valor, ate, esperado",
+    [
+        ("maior_igual", "3000", None, "de pelo menos R$ 3.000"),
+        ("menor_igual", "2500.50", None, "de no máximo R$ 2.500,50"),
+        ("igual", "0", None, "igual a R$ 0"),
+        ("entre", "1000", "1500000", "entre R$ 1.000 e R$ 1.500.000"),
+    ],
+)
+def test_renda_aparece_no_padrao_brasileiro(estudo, operador, valor, ate, esperado):
+    criterio = gravar(
+        estudo, "renda_familiar_mensal", operador,
+        valor_numero=Decimal(valor), valor_numero_ate=Decimal(ate) if ate else None,
+    )
 
-    assert criterio.frase == "Incluir participantes com renda familiar de pelo menos 2500.5 reais"
+    assert criterio.frase == f"Incluir participantes com renda familiar {esperado}"
+
+
+def test_numero_que_nao_e_dinheiro_leva_a_unidade_so_no_fim(estudo):
+    criterio = gravar(estudo, "idade_anos", "entre", valor_numero=18, valor_numero_ate=65)
+
+    assert criterio.condicao == "entre 18 e 65 anos"
+
+
+def test_resumo_do_estudo_formata_a_renda(estudo):
+    gravar(estudo, "renda_familiar_mensal", "entre", valor_numero=1000, valor_numero_ate=100000)
+
+    assert estudo.resumo_texto == "Serão incluídos participantes com renda familiar entre R$ 1.000 e R$ 100.000."
+
+
+def test_faixa_da_variavel_em_reais_leva_o_simbolo_nas_duas_pontas():
+    assert variavel("renda_familiar_mensal").faixa == "de R$ 0 a R$ 100.000"
+
+
+def test_faixa_da_variavel_que_nao_e_dinheiro_leva_a_unidade(estudo):
+    assert variavel("idade_anos").faixa == "de 0 a 120 anos"
+
+
+def test_nome_do_criterio_no_admin_usa_a_descricao(estudo):
+    criterio = gravar(estudo, "renda_familiar_mensal", "maior_igual", valor_numero=3000)
+
+    assert str(criterio) == "renda familiar de pelo menos R$ 3.000"
 
 
 def test_frase_de_exclusao_troca_o_verbo(estudo):
@@ -145,16 +183,18 @@ def test_criterio_numerico_completo_nao_tem_pendencia():
     assert criterio_sem_gravar("idade_anos", "maior_igual", valor_numero=18).pendencia() is None
 
 
-def test_numerico_sem_valor_pede_o_valor():
-    criterio = criterio_sem_gravar("idade_anos", "maior_igual")
+@pytest.mark.parametrize("operador", ["maior_igual", "menor_igual", "igual"])
+def test_condicao_de_um_valor_sem_valor_pede_o_valor(operador):
+    criterio = criterio_sem_gravar("idade_anos", operador)
 
-    assert criterio.pendencia() == "Informe o valor de referência."
+    assert criterio.pendencia() == "Informe o valor."
 
 
-def test_entre_sem_o_segundo_valor_pede_os_dois():
-    criterio = criterio_sem_gravar("idade_anos", "entre", valor_numero=18)
+@pytest.mark.parametrize("campos", [{}, {"valor_numero": 18}, {"valor_numero_ate": 65}])
+def test_entre_com_menos_de_dois_valores_pede_os_dois(campos):
+    criterio = criterio_sem_gravar("idade_anos", "entre", **campos)
 
-    assert criterio.pendencia() == "O operador entre exige dois valores."
+    assert criterio.pendencia() == "Informe os dois valores."
 
 
 def test_entre_com_valores_fora_de_ordem_e_recusado():
@@ -252,3 +292,47 @@ def test_validar_opcoes_levanta_a_mensagem_no_campo_certo():
         criterio.validar_opcoes()
 
     assert "opcoes" in erro.value.message_dict
+
+
+def todas(codigo_do_dominio):
+    return [opcao.id for opcao in OpcaoDominio.objects.filter(dominio__codigo=codigo_do_dominio)]
+
+
+@pytest.mark.parametrize(
+    "tipo_regra, aviso",
+    [
+        ("inclusao", "Esse critério inclui todos os participantes."),
+        ("exclusao", "Esse critério exclui todos os participantes."),
+    ],
+)
+def test_lista_com_todas_as_opcoes_marcadas_e_recusada(tipo_regra, aviso):
+    form = formulario(
+        "orientacao_sexual",
+        {"tipo_regra": tipo_regra, "operador": "esta_em", "opcoes": todas("orientacao_sexual")},
+    )
+
+    assert not form.is_valid()
+    assert form.pendencia() == aviso
+
+
+def test_lista_com_todas_menos_uma_e_aceita():
+    marcadas = todas("orientacao_sexual")[:-1]
+
+    form = formulario("orientacao_sexual", {"tipo_regra": "inclusao", "operador": "esta_em", "opcoes": marcadas})
+
+    assert form.is_valid()
+
+
+def test_lista_de_duas_opcoes_recusa_marcar_as_duas_e_aceita_uma():
+    ambas = todas("zona_residencia")
+
+    assert not formulario("zona_residencia", {"tipo_regra": "inclusao", "operador": "esta_em", "opcoes": ambas}).is_valid()
+    assert formulario("zona_residencia", {"tipo_regra": "inclusao", "operador": "esta_em", "opcoes": ambas[:1]}).is_valid()
+
+
+def test_ordinal_nao_cai_na_regra_de_todas_as_opcoes():
+    escolhida = [opcao.id for opcao in opcoes("escolaridade", "sem_instrucao")]
+
+    form = formulario("escolaridade", {"tipo_regra": "inclusao", "operador": "maior_igual", "opcoes": escolhida})
+
+    assert form.is_valid()

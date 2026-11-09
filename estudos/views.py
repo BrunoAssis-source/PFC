@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.db.models import Count
+from django.http import Http404
 from django.urls import reverse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
@@ -9,6 +10,7 @@ from auditoria.servicos import registrar
 from autenticacao.models import Usuario
 from autenticacao.permissoes import exige_perfil
 from catalogo.busca import buscar_criterios, selecionaveis
+from catalogo.models import OpcaoDominio
 
 from .forms import CriterioForm, EstudoForm, VariavelPropostaForm
 from .models import Criterio, Estudo
@@ -90,8 +92,13 @@ def criterios(request, id):
     contexto = contexto_regras(estudo)
     contexto["arvore"] = arvore_do_catalogo()
     inicial = request.GET.get("variavel", "")
-    if inicial.isdigit():
-        contexto["configuracao_inicial"] = reverse("estudos:configurar_criterio", args=[estudo.id, int(inicial)])
+    # Só variável que a tela abre de fato: um id inválido faria a configuração
+    # responder 404 e o script recarregar a página sem parar.
+    variavel = selecionaveis().filter(pk=int(inicial)).first() if inicial.isdigit() else None
+    if variavel:
+        contexto["configuracao_inicial"] = reverse("estudos:configurar_criterio", args=[estudo.id, variavel.id])
+        contexto["variavel_inicial"] = variavel.id
+        contexto["grupo_inicial"] = variavel.subcategoria_id
     return render(request, "estudos/criterios.html", contexto)
 
 
@@ -109,6 +116,18 @@ def configurar_criterio(request, id, variavel_id):
     variavel = variavel_selecionavel(variavel_id)
     form = CriterioForm(variavel=variavel)
     return render(request, "estudos/_configuracao.html", {"estudo": estudo, "variavel": variavel, "form": form})
+
+
+@exige_perfil(Usuario.Perfil.PESQUISADOR)
+def opcoes_filhas(request, id, variavel_id):
+    estudo_do_pesquisador(request, id)
+    variavel = variavel_selecionavel(variavel_id)
+    pai = request.GET.get("pai", "")
+    if not variavel.dominio.superior_id or not pai.isdigit():
+        raise Http404
+    # O pai tem de ser do domínio superior da variável, senão qualquer id listaria opções alheias.
+    pai = get_object_or_404(OpcaoDominio, pk=int(pai), dominio_id=variavel.dominio.superior_id)
+    return render(request, "estudos/_opcoes_filhas.html", {"opcoes": variavel.dominio.opcoes.filter(pai=pai)})
 
 
 def criterio_da_requisicao(request, estudo, variavel, dados):

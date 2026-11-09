@@ -29,12 +29,13 @@
             {% for dominio in arvore %}
                 <p class="arvore-dominio">{{ dominio.categoria.nome }}</p>
                 {% for grupo in dominio.grupos %}
-                    <details class="arvore-grupo">
+                    <details class="arvore-grupo" {% if grupo.subcategoria.id == grupo_inicial %}open{% endif %}>
                         <summary>{{ grupo.subcategoria.nome }} <span class="arvore-total">{{ grupo.variaveis|length }}</span></summary>
                         <ul class="arvore-lista">
                             {% for variavel in grupo.variaveis %}
                                 <li>
                                     <button type="button" class="variavel-botao"
+                                            {% if variavel.id == variavel_inicial %}aria-current="true"{% endif %}
                                             data-url="{% url 'estudos:configurar_criterio' estudo.id variavel.id %}"
                                             title="{{ variavel.definicao }}">
                                         <span>{{ variavel.rotulo }}</span>

@@ -986,6 +986,44 @@ a.painel-item:hover {
     border-radius: 12px;
 }
 
+.cascata-lista {
+    margin-top: .75rem;
+    max-height: 18rem;
+    overflow-y: auto;
+}
+
+.cascata-escolhidos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem;
+}
+
+.etiqueta {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    padding: .15rem .3rem .15rem .8rem;
+    border-radius: 999px;
+    background: var(--verde-fraco);
+    color: var(--verde);
+    font-size: .9rem;
+}
+
+.etiqueta button {
+    width: 28px;
+    height: 28px;
+    border: 0;
+    border-radius: 50%;
+    background: none;
+    color: inherit;
+    font-size: 1.1rem;
+    line-height: 1;
+}
+
+.etiqueta button:hover {
+    background: #fff;
+}
+
 .valores {
     display: flex;
     flex-wrap: wrap;
