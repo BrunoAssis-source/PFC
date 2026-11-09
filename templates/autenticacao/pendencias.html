@@ -10,10 +10,30 @@
 
 <div class="painel-secao">
     <h2 class="painel-secao-titulo">Variáveis por preencher</h2>
-    <span class="painel-secao-contagem">0 registros</span>
+    <span class="painel-secao-contagem">{{ pendencias|length }} registro{{ pendencias|length|pluralize }}</span>
 </div>
 
 <div class="painel-lista">
-    <p class="painel-vazio">Nenhuma pendência registrada.</p>
+    {% for p in pendencias %}
+        <div class="pendencia">
+            <span class="painel-linha-texto">
+                <strong>Voluntário {{ p.codigo }}</strong>
+                <span class="painel-linha-sub">Estudo: {{ p.estudo.nome }}</span>
+                <span class="painel-linha-sub">Falta coletar: {% for v in p.variaveis %}{{ v.nome }}{% if not forloop.last %}, {% endif %}{% endfor %}.</span>
+            </span>
+            <form class="pendencia-acao" method="post" action="{% url 'voluntarios:vincular' p.voluntario.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="estudo" value="{{ p.estudo.id }}">
+                <input type="hidden" name="seguir" value="coleta">
+                <label class="form-check pendencia-tcle">
+                    <input class="form-check-input" type="checkbox" name="tcle" required>
+                    <span class="form-check-label">Conferi o TCLE assinado, no documento físico</span>
+                </label>
+                <button class="painel-acao" type="submit">Coletar</button>
+            </form>
+        </div>
+    {% empty %}
+        <p class="painel-vazio">Nenhuma pendência registrada.</p>
+    {% endfor %}
 </div>
 {% endblock %}

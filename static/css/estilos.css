@@ -1421,3 +1421,26 @@ a.painel-item:hover {
     font-size: .75rem;
     color: var(--tinta-suave);
 }
+
+.pendencia {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.1rem 1.25rem;
+    background: #fff;
+    border-bottom: 1px solid var(--borda);
+}
+
+.pendencia-acao {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .75rem 1rem;
+}
+
+.pendencia-tcle {
+    margin: 0;
+    font-size: .88rem;
+}

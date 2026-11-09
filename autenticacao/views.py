@@ -18,6 +18,7 @@ from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from auditoria.models import RegistroAuditoria
 from auditoria.servicos import registrar
 from estudos.painel import dados_do_painel
+from voluntarios.pendencias import pendentes
 
 from .forms import (
     CadastroForm,
@@ -173,7 +174,12 @@ def coleta(request):
 
 @exige_perfil(Usuario.Perfil.PROFISSIONAL)
 def pendencias(request):
-    return render(request, "autenticacao/pendencias.html")
+    lista = pendentes()
+    # O registro leva só a quantidade, sem voluntário, estudo nem variável.
+    registrar(
+        RegistroAuditoria.Acao.PENDENCIAS_CONSULTA, request=request, usuario=request.user, objeto=f"{len(lista)} pendências"
+    )
+    return render(request, "autenticacao/pendencias.html", {"pendencias": lista})
 
 
 @exige_administrador
