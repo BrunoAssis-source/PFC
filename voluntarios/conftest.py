@@ -1,7 +1,10 @@
 import pytest
 
 from autenticacao.models import Usuario
-from estudos.models import Estudo
+from catalogo.models import OpcaoDominio, Variavel
+from estudos.models import Criterio, Estudo
+from voluntarios import cpf
+from voluntarios.models import Participacao, Voluntario
 
 # CPFs sintéticos que passam na conta dos dígitos verificadores.
 CPF_A = "52998224725"
@@ -33,3 +36,35 @@ def estudo_ativo(pesquisadora):
 def cliente(client, profissional):
     client.force_login(profissional)
     return client
+
+
+def variavel(codigo):
+    return Variavel.objects.get(codigo=codigo)
+
+
+def opcoes(dominio, *valores):
+    return list(OpcaoDominio.objects.filter(dominio__codigo=dominio, valor__in=valores).order_by("ordem"))
+
+
+def criterio(estudo, codigo, operador, escolhidas=(), tipo_regra=Criterio.TipoRegra.INCLUSAO, **campos):
+    novo = Criterio.objects.create(
+        estudo=estudo, variavel=variavel(codigo), operador=operador, tipo_regra=tipo_regra, **campos
+    )
+    novo.opcoes.set(escolhidas)
+    return novo
+
+
+def novo_estudo(pesquisadora, nome="Estudo de teste"):
+    return Estudo.objects.create(
+        nome=nome, condicao="Condição", pesquisador=pesquisadora, situacao=Estudo.Situacao.ATIVO
+    )
+
+
+def nova_participacao(profissional, estudo, numero=CPF_A):
+    voluntario, _ = Voluntario.objects.get_or_create(
+        codigo_hmac=cpf.codigo(numero),
+        defaults={"cpf_cifrado": cpf.cifrar(numero), "criado_por": profissional},
+    )
+    return Participacao.objects.create(
+        voluntario=voluntario, estudo=estudo, tcle_versao="1", registrado_por=profissional
+    )
