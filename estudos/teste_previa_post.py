@@ -86,6 +86,6 @@ def test_script_envia_a_previa_por_post_com_o_formulario_inteiro():
 
     script = (Path(settings.BASE_DIR) / "static" / "js" / "criterios.js").read_text(encoding="utf-8")
 
-    assert 'method: "POST", body: new FormData(form)' in script
+    assert 'fetch(form.dataset.previaUrl, { method: "POST", body: new FormData(form) })' in script
     assert "dados.delete" not in script
     assert 'previaUrl + "?"' not in script
