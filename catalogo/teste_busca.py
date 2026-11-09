@@ -41,9 +41,9 @@ def test_termo_vazio_nao_devolve_nada():
     assert rotulos("   ") == []
 
 
-def test_data_de_nascimento_e_faixa_etaria_ficam_fora():
-    assert rotulos("nascimento") == []
+def test_faixa_etaria_fica_fora_e_data_de_nascimento_entra():
     assert rotulos("faixa etária") == []
+    assert "Data de nascimento" in rotulos("nascimento")
 
 
 def test_variavel_de_texto_livre_fica_fora():

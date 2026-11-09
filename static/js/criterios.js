@@ -136,6 +136,25 @@
         }
     }
 
+    // Data: o mês e o dia só aparecem quando a precisão pede, e o segundo período só no "entre".
+    function ajustarData(form) {
+        var precisao = form.querySelector('input[name="precisao"]:checked');
+        if (!precisao) {
+            return;
+        }
+        var escolhido = form.querySelector('input[name="operador"]:checked');
+        var entre = !!escolhido && escolhido.value === "entre";
+        form.querySelectorAll("[data-mes]").forEach(function (bloco) {
+            bloco.hidden = precisao.value === "ano";
+        });
+        form.querySelectorAll("[data-dia]").forEach(function (bloco) {
+            bloco.hidden = precisao.value !== "dia";
+        });
+        form.querySelectorAll("[data-entre-data]").forEach(function (bloco) {
+            bloco.hidden = !entre;
+        });
+    }
+
     function atualizarPrevia(form) {
         var pedido = ++pedidoDaPrevia;
         // O corpo leva o formulário inteiro, inclusive o token CSRF.
@@ -180,10 +199,12 @@
     function iniciarFormulario(form) {
         iniciarCascataDoFormulario(form);
         ajustarValores(form);
+        ajustarData(form);
         atualizarPrevia(form);
 
         form.addEventListener("input", function () {
             ajustarValores(form);
+            ajustarData(form);
             agendarPrevia(form);
         });
 

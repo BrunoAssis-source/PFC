@@ -80,6 +80,34 @@
             </div>
         </fieldset>
 
+    {% elif variavel.tipo == "data" %}
+        <fieldset class="config-grupo">
+            <legend>Condição</legend>
+            <div class="escolhas">
+                {% for valor, rotulo in form.fields.operador.choices %}
+                    <label class="escolha"><input type="radio" name="operador" value="{{ valor }}" {% if criterio %}{% if valor == criterio.operador %}checked{% endif %}{% elif forloop.first %}checked{% endif %}><span>{{ rotulo }}</span></label>
+                {% endfor %}
+            </div>
+        </fieldset>
+        <fieldset class="config-grupo">
+            <legend>Precisão da data</legend>
+            <div class="escolhas">
+                {% for valor, rotulo in form.fields.precisao.choices %}
+                    <label class="escolha"><input type="radio" name="precisao" value="{{ valor }}" {% if valor == valores.precisao %}checked{% endif %}><span>{{ rotulo }}</span></label>
+                {% endfor %}
+            </div>
+        </fieldset>
+        <div class="config-grupo valores">
+            <label><span>Ano</span><input type="number" name="ano" min="1900" max="2100" inputmode="numeric" value="{{ valores.ano }}"></label>
+            <label data-mes><span>Mês</span><input type="number" name="mes" min="1" max="12" inputmode="numeric" value="{{ valores.mes }}"></label>
+            <label data-dia><span>Dia</span><input type="number" name="dia" min="1" max="31" inputmode="numeric" value="{{ valores.dia }}"></label>
+        </div>
+        <div class="config-grupo valores" data-entre-data>
+            <label><span>Até o ano</span><input type="number" name="ano_ate" min="1900" max="2100" inputmode="numeric" value="{{ valores.ano_ate }}"></label>
+            <label data-mes><span>Mês</span><input type="number" name="mes_ate" min="1" max="12" inputmode="numeric" value="{{ valores.mes_ate }}"></label>
+            <label data-dia><span>Dia</span><input type="number" name="dia_ate" min="1" max="31" inputmode="numeric" value="{{ valores.dia_ate }}"></label>
+        </div>
+
     {% elif variavel.tipo == "booleana" %}
         <fieldset class="config-grupo">
             <legend>Resposta</legend>

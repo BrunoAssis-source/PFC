@@ -1,5 +1,5 @@
 <li class="regra">
-    <span class="regra-texto">{{ criterio.descricao }}</span>
+    <span class="regra-texto">{{ criterio.descricao|capfirst }}</span>
     {% if estudo.situacao != "encerrado" %}
     <div class="regra-acoes">
         <button type="button" class="regra-editar" data-url="{% url 'estudos:editar_criterio' estudo.id criterio.id %}" aria-label="Editar critério: {{ criterio.descricao }}">Editar</button>

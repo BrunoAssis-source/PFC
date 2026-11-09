@@ -7,9 +7,8 @@ from .models import SinonimoVariavel, Variavel
 
 LIMIAR_SIMILARIDADE = 0.4
 
-# Data de nascimento e faixa etária existem para calcular a idade. Quem
-# escolhe critério usa a idade em anos.
-OCULTAS_NO_SELETOR = ("data_nascimento", "faixa_etaria")
+# A faixa etária existe só como derivada da idade e não serve de critério.
+OCULTAS_NO_SELETOR = ("faixa_etaria",)
 
 
 def selecionaveis():

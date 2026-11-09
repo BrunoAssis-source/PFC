@@ -1,3 +1,6 @@
+import calendar
+from datetime import date
+
 from django import forms
 from django.core.exceptions import ValidationError
 
@@ -22,7 +25,14 @@ OPERADORES_DA_TELA = {
     ),
     Variavel.Tipo.NOMINAL: ((Operador.ESTA_EM, "está em"),),
     Variavel.Tipo.BOOLEANA: ((Operador.VERDADEIRO, "Sim"), (Operador.FALSO, "Não")),
+    Variavel.Tipo.DATA: ((Operador.ANTES, "antes de"), (Operador.DEPOIS, "depois de"), (Operador.ENTRE, "entre")),
 }
+
+# O pesquisador informa ano, mês e dia conforme a precisão. A data gravada sai desses campos.
+CAMPOS_DE_DATA = (
+    ("ano", 1900, 2100), ("mes", 1, 12), ("dia", 1, 31),
+    ("ano_ate", 1900, 2100), ("mes_ate", 1, 12), ("dia_ate", 1, 31),
+)
 
 
 class EstudoForm(EstiloBootstrapMixin, forms.ModelForm):
@@ -40,8 +50,8 @@ class EstudoForm(EstiloBootstrapMixin, forms.ModelForm):
 class CriterioForm(forms.ModelForm):
     class Meta:
         model = Criterio
-        fields = ("tipo_regra", "operador", "valor_numero", "valor_numero_ate", "opcoes")
-        widgets = {"opcoes": forms.CheckboxSelectMultiple}
+        fields = ("tipo_regra", "operador", "valor_numero", "valor_numero_ate", "opcoes", "precisao")
+        widgets = {"opcoes": forms.CheckboxSelectMultiple, "precisao": forms.RadioSelect}
         error_messages = {"operador": {"required": "Escolha como comparar."}}
 
     def __init__(self, *args, variavel, **kwargs):
@@ -59,6 +69,11 @@ class CriterioForm(forms.ModelForm):
             self.fields["opcoes"].queryset = variavel.dominio.opcoes.all()
         else:
             del self.fields["opcoes"]
+        if variavel.tipo == Variavel.Tipo.DATA:
+            for nome, minimo, maximo in CAMPOS_DE_DATA:
+                self.fields[nome] = forms.IntegerField(required=False, min_value=minimo, max_value=maximo)
+        else:
+            del self.fields["precisao"]
 
     def clean(self):
         dados = super().clean()
@@ -75,9 +90,49 @@ class CriterioForm(forms.ModelForm):
                 self.add_error(None, erro)
             else:
                 self.recusar_todas_as_opcoes(dados, escolhidas)
+        if self.variavel.tipo == Variavel.Tipo.DATA and "operador" in dados:
+            self.montar_datas(dados)
         if not self.errors:
             self.recusar_variavel_repetida()
         return dados
+
+    def periodo(self, sufixo, precisao):
+        """Primeiro e último dia do período informado, ou None com o erro junto do campo que falta."""
+        valores = {nome: self.cleaned_data.get(nome + sufixo) for nome in ("ano", "mes", "dia")}
+        exigidos = {Criterio.Precisao.ANO: ("ano",), Criterio.Precisao.MES: ("ano", "mes")}.get(
+            precisao, ("ano", "mes", "dia")
+        )
+        rotulos = {"ano": "o ano", "mes": "o mês", "dia": "o dia"}
+        for nome in exigidos:
+            if valores[nome] is None:
+                if nome + sufixo not in self.errors:
+                    self.add_error(nome + sufixo, f"Informe {rotulos[nome]}.")
+                return None
+        ano, mes, dia = valores["ano"], valores["mes"], valores["dia"]
+        try:
+            if precisao == Criterio.Precisao.ANO:
+                return date(ano, 1, 1), date(ano, 12, 31)
+            if precisao == Criterio.Precisao.MES:
+                return date(ano, mes, 1), date(ano, mes, calendar.monthrange(ano, mes)[1])
+            return date(ano, mes, dia), date(ano, mes, dia)
+        except ValueError:
+            self.add_error("dia" + sufixo if precisao == Criterio.Precisao.DIA else "mes" + sufixo, "Essa data não existe.")
+            return None
+
+    def montar_datas(self, dados):
+        """RN17: antes de usa o primeiro dia do período e depois de, o último."""
+        precisao = dados.get("precisao") or Criterio.Precisao.DIA
+        operador = dados["operador"]
+        inicio = self.periodo("", precisao)
+        fim = self.periodo("_ate", precisao) if operador == Operador.ENTRE else None
+        instancia = self.instance
+        instancia.precisao = precisao
+        instancia.valor_data = instancia.valor_data_ate = None
+        if inicio is None or (operador == Operador.ENTRE and fim is None):
+            return
+        instancia.valor_data = inicio[1] if operador == Operador.DEPOIS else inicio[0]
+        if operador == Operador.ENTRE:
+            instancia.valor_data_ate = fim[1]
 
     def recusar_variavel_repetida(self):
         """RN19: cada variável aparece em um só critério do estudo."""

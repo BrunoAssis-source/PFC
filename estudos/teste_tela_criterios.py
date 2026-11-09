@@ -37,10 +37,10 @@ def test_arvore_abre_com_todos_os_grupos_fechados(cliente, estudo):
     assert 'arvore-grupo" open' not in html
 
 
-def test_arvore_nao_lista_data_de_nascimento_nem_faixa_etaria(cliente, estudo):
+def test_arvore_lista_data_de_nascimento_mas_nao_a_faixa_etaria(cliente, estudo):
     html = cliente.get(endereco("criterios", estudo)).content.decode()
 
-    assert "Data de nascimento" not in html
+    assert "Data de nascimento" in html
     assert "Faixa etária" not in html
 
 
@@ -74,7 +74,7 @@ def test_configuracao_muda_conforme_o_tipo(cliente, estudo, codigo, trecho):
     assert trecho in resposta.content.decode()
 
 
-@pytest.mark.parametrize("codigo", ["data_nascimento", "faixa_etaria"])
+@pytest.mark.parametrize("codigo", ["faixa_etaria"])
 def test_variavel_fora_do_seletor_nao_abre_configuracao(cliente, estudo, codigo):
     resposta = cliente.get(endereco("configurar_criterio", estudo, variavel(codigo).id))
 
@@ -341,7 +341,7 @@ def test_link_com_variavel_invalida_nao_abre_nada(cliente, estudo, variavel_id):
 
 
 def test_link_com_variavel_fora_do_seletor_nao_abre_nada(cliente, estudo):
-    html = abrir_variavel(cliente, estudo, "data_nascimento")
+    html = abrir_variavel(cliente, estudo, "faixa_etaria")
 
     assert "data-configuracao-inicial" not in html
 

@@ -143,7 +143,7 @@ def contexto_configuracao(estudo, variavel, criterio=None):
     """Contexto da coluna do meio, em branco ou preenchido com o critério em edição."""
     contexto = {
         "estudo": estudo, "variavel": variavel, "form": CriterioForm(variavel=variavel),
-        "criterio": criterio, "selecionadas": [], "marcadas": [], "valores": {},
+        "criterio": criterio, "selecionadas": [], "marcadas": [], "valores": {"precisao": Criterio.Precisao.DIA},
     }
     if criterio:
         contexto["selecionadas"] = list(criterio.opcoes.all())
@@ -151,7 +151,13 @@ def contexto_configuracao(estudo, variavel, criterio=None):
         contexto["valores"] = {
             "valor": numero_do_campo(criterio.valor_numero),
             "ate": numero_do_campo(criterio.valor_numero_ate),
+            "precisao": criterio.precisao,
         }
+        for sufixo, data in (("", criterio.valor_data), ("_ate", criterio.valor_data_ate)):
+            if data:
+                contexto["valores"].update(
+                    {f"ano{sufixo}": data.year, f"mes{sufixo}": data.month, f"dia{sufixo}": data.day}
+                )
     return contexto
 
 
