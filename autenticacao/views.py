@@ -17,6 +17,7 @@ from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 
 from auditoria.models import RegistroAuditoria
 from auditoria.servicos import registrar
+from estudos.painel import dados_do_painel
 
 from .forms import (
     CadastroForm,
@@ -148,7 +149,10 @@ def reenviar_confirmacao(request):
 
 @login_required
 def inicio(request):
-    return render(request, "autenticacao/inicio.html")
+    contexto = {}
+    if request.user.e_pesquisador:
+        contexto["painel"] = dados_do_painel(request.user)
+    return render(request, "autenticacao/inicio.html", contexto)
 
 
 @login_required
