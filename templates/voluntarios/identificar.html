@@ -1,0 +1,34 @@
+{% extends "painel.html" %}
+{% block title %}Identificar voluntário | UniData{% endblock %}
+{% block content %}
+<div class="painel-cabecalho">
+    <div>
+        <p class="painel-rotulo">Coleta de dados de pesquisa</p>
+        <h1 class="painel-titulo">Identificar voluntário</h1>
+    </div>
+</div>
+
+<form class="painel-formulario" method="post" autocomplete="off">
+    {% csrf_token %}
+    <div class="mb-3">
+        <label class="form-label" for="{{ form.cpf.id_for_label }}">{{ form.cpf.label }}</label>
+        {{ form.cpf }}
+        {% for error in form.cpf.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+        <div class="ajuda-campo">A busca é só pelo CPF. O sistema não guarda nome nem outro dado de contato.</div>
+    </div>
+    <div class="painel-formulario-acoes">
+        <button class="painel-acao" type="submit">Buscar</button>
+    </div>
+</form>
+
+{% if ausente %}
+<div class="painel-formulario mt-4">
+    <p>Nenhum voluntário com o CPF {{ ausente }}.</p>
+    <form method="post" action="{% url 'voluntarios:cadastrar' %}">
+        {% csrf_token %}
+        <input type="hidden" name="cpf" value="{{ cpf }}">
+        <button class="painel-acao" type="submit">Cadastrar novo voluntário</button>
+    </form>
+</div>
+{% endif %}
+{% endblock %}

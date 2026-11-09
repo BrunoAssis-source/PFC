@@ -38,6 +38,10 @@
                 {% include "icones/icone.html" with nome="registro" %}
                 <span>Registro</span>
             </a>
+            <a class="painel-item {% if request.resolver_match.app_name == 'voluntarios' %}ativo{% endif %}" href="{% url 'voluntarios:identificar' %}">
+                {% include "icones/icone.html" with nome="usuarios" %}
+                <span>Voluntários</span>
+            </a>
             <a class="painel-item {% if rota == 'pendencias' %}ativo{% endif %}" href="{% url 'pendencias' %}">
                 {% include "icones/icone.html" with nome="relogio" %}
                 <span>Pendências</span>

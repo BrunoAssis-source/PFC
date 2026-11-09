@@ -1,0 +1,48 @@
+{% extends "painel.html" %}
+{% block title %}Voluntário | UniData{% endblock %}
+{% block content %}
+<div class="painel-cabecalho">
+    <div>
+        <p class="painel-rotulo">Coleta de dados de pesquisa</p>
+        <h1 class="painel-titulo">Voluntário {{ cpf_mascarado }}</h1>
+    </div>
+    <a class="painel-voltar" href="{% url 'voluntarios:identificar' %}">Identificar outro</a>
+</div>
+
+<div class="painel-secao">
+    <h2 class="painel-secao-titulo">Estudos do voluntário</h2>
+    <span class="painel-secao-contagem">{{ participacoes|length }} registro{{ participacoes|length|pluralize }}</span>
+</div>
+
+<div class="painel-lista">
+    {% for p in participacoes %}
+        <div class="painel-linha">
+            <span class="painel-linha-texto">
+                <strong>{{ p.estudo.nome }}</strong>
+                <span class="painel-linha-sub">TCLE versão {{ p.tcle_versao }}, conferido em {{ p.tcle_aceito_em|date:"d/m/Y" }}</span>
+            </span>
+            <span class="painel-selo {{ p.situacao }}">{{ p.get_situacao_display }}</span>
+        </div>
+    {% empty %}
+        <p class="painel-vazio">Este voluntário ainda não está em nenhum estudo.</p>
+    {% endfor %}
+</div>
+
+<div class="painel-secao">
+    <h2 class="painel-secao-titulo">Vincular a um estudo</h2>
+</div>
+<form class="painel-formulario" method="post" action="{% url 'voluntarios:vincular' voluntario.id %}">
+    {% csrf_token %}
+    <div class="mb-3">
+        <label class="form-label" for="{{ form.estudo.id_for_label }}">{{ form.estudo.label }}</label>
+        {{ form.estudo }}
+    </div>
+    <div class="form-check mb-3">
+        <input class="form-check-input" type="checkbox" name="tcle" id="id_tcle" required>
+        <label class="form-check-label" for="id_tcle">{{ form.tcle.label }}</label>
+    </div>
+    <div class="painel-formulario-acoes">
+        <button class="painel-acao" type="submit">Vincular</button>
+    </div>
+</form>
+{% endblock %}
