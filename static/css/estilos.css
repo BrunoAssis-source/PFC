@@ -1138,6 +1138,7 @@ a.painel-item:hover {
 
 .regra {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     gap: .5rem;
@@ -1152,9 +1153,58 @@ a.painel-item:hover {
     margin: 0;
 }
 
+.regra-acoes {
+    display: flex;
+    align-items: center;
+    gap: .25rem;
+    margin-left: auto;
+}
+
+.regra-confirmacao {
+    display: flex;
+    flex-basis: 100%;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .5rem;
+    padding: .2rem .6rem .5rem 0;
+}
+
+.regra-confirmacao {
+    justify-content: flex-end;
+}
+
+.regra-confirmacao span {
+    flex-basis: 100%;
+    font-size: .9rem;
+    color: var(--tinta-suave);
+}
+
+.regra-texto {
+    flex: 1 1 8rem;
+    min-width: 0;
+}
+
+.regra-sim,
+.regra-nao {
+    min-height: 44px;
+    padding: 0 1rem;
+    border-radius: 10px;
+}
+
+.regra-sim {
+    border: 0;
+    background: #b3261e;
+    color: #fff;
+    font-weight: 600;
+}
+
+.regra-nao {
+    border: 1px solid var(--borda);
+    background: #fff;
+}
+
 .regra-editar {
     min-height: 44px;
-    margin-left: auto;
     padding: 0 .6rem;
     border: 0;
     border-radius: 10px;

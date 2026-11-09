@@ -300,10 +300,37 @@
         });
     }
 
+    function alternarConfirmacao(regra, pedir) {
+        regra.querySelector(".regra-acoes").hidden = pedir;
+        regra.querySelector(".regra-confirmacao").hidden = !pedir;
+        // O foco vai para o "Não", o botão seguro, e volta ao × quando se desiste.
+        regra.querySelector(pedir ? ".regra-nao" : ".regra-remover").focus();
+    }
+
     regras.addEventListener("click", function (evento) {
         var editar = evento.target.closest(".regra-editar");
         if (editar) {
             abrirConfiguracao(editar.dataset.url, null);
+            return;
+        }
+        var pedido = evento.target.closest("[data-pedir-remocao]");
+        if (pedido) {
+            regras.querySelectorAll(".regra-confirmacao:not([hidden])").forEach(function (aberta) {
+                alternarConfirmacao(aberta.closest(".regra"), false);
+            });
+            alternarConfirmacao(pedido.closest(".regra"), true);
+            return;
+        }
+        var desistencia = evento.target.closest("[data-cancelar-remocao]");
+        if (desistencia) {
+            alternarConfirmacao(desistencia.closest(".regra"), false);
+        }
+    });
+
+    regras.addEventListener("keydown", function (evento) {
+        var confirmacao = evento.target.closest(".regra-confirmacao");
+        if (evento.key === "Escape" && confirmacao) {
+            alternarConfirmacao(confirmacao.closest(".regra"), false);
         }
     });
 
