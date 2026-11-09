@@ -163,3 +163,10 @@ def test_formulario_sem_estudo_nao_checa_duplicidade():
     form = CriterioForm(IDADE, variavel=variavel("idade_anos"))
 
     assert form.is_valid()
+
+
+def test_segundo_valor_residual_fora_do_entre_nao_esconde_o_duplicado(cliente, estudo):
+    # Dado antigo pode ter sobra no segundo valor de uma condição que não é "entre".
+    gravar(estudo, "idade_anos", "maior_igual", valor_numero=18, valor_numero_ate=65)
+
+    assert adicionar(cliente, estudo, "idade_anos", IDADE).status_code == 422
