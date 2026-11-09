@@ -8,6 +8,7 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 
 from .models import Participacao, ValorColetado, ValorSensivel
+from .pendencias import variaveis_faltantes
 
 logger = logging.getLogger(__name__)
 
@@ -19,20 +20,13 @@ class _Desfazer(Exception):
         self.criterio_id = criterio_id
 
 
-def variaveis_da_coleta(estudo):
-    """Variáveis que o profissional responde, na ordem de pergunta: sensíveis por último.
+def variaveis_da_coleta(participacao):
+    """Variáveis que o profissional ainda precisa responder: as que faltam para avaliar os critérios do estudo.
 
-    Variável derivada não é perguntada, então entram no lugar dela as variáveis de que ela é calculada.
+    O voluntário que já tem valor válido de um estudo anterior não responde de novo, e a variável derivada
+    entra pelas origens. Sensíveis ficam por último. O banco não muda durante a coleta, então a lista é estável.
     """
-    pendentes = [c.variavel for c in estudo.criterios.select_related("variavel")]
-    perguntadas = {}
-    while pendentes:
-        variavel = pendentes.pop()
-        if variavel.derivada:
-            pendentes.extend(variavel.origem.all())
-        else:
-            perguntadas[variavel.id] = variavel
-    return sorted(perguntadas.values(), key=lambda v: (v.sensivel, v.subcategoria_id, v.codigo))
+    return variaveis_faltantes(participacao.voluntario_id, participacao.estudo_id)
 
 
 def chave_da_sessao(participacao):
@@ -45,7 +39,7 @@ def respostas_pendentes(sessao, participacao):
 
 
 def proxima_variavel(participacao, pendentes):
-    for variavel in variaveis_da_coleta(participacao.estudo):
+    for variavel in variaveis_da_coleta(participacao):
         if str(variavel.id) not in pendentes:
             return variavel
     return None
@@ -94,7 +88,7 @@ def registrar_resposta(participacao, variavel, valores, fonte, usuario, sessao):
     chave = chave_da_sessao(participacao)
     respostas = respostas_pendentes(sessao, participacao)
     respostas[str(variavel.id)] = _serializar(valores, fonte)
-    perguntadas = variaveis_da_coleta(participacao.estudo)
+    perguntadas = variaveis_da_coleta(participacao)
     sensiveis = {str(v.id) for v in perguntadas if v.sensivel}
     completa = all(str(v.id) in respostas for v in perguntadas)
     try:
@@ -135,7 +129,7 @@ def concluir(participacao):
 
 
 def concluir_se_nao_ha_o_que_perguntar(participacao):
-    if participacao.situacao == Participacao.Situacao.EM_COLETA and not variaveis_da_coleta(participacao.estudo):
+    if participacao.situacao == Participacao.Situacao.EM_COLETA and not variaveis_da_coleta(participacao):
         concluir(participacao)
 
 

@@ -25,6 +25,8 @@ class RegistroAuditoria(models.Model):
         COLETA_RESPOSTA = "coleta_resposta", "resposta de coleta"
         SENSIVEL_RESPOSTA = "sensivel_resposta", "resposta a variável sensível"
         COLETA_ELIMINACAO = "coleta_eliminacao", "coleta encerrada por critério"
+        PENDENCIAS_CONSULTA = "pendencias_consulta", "consulta às pendências"
+        PENDENCIA_COLETA = "pendencia_coleta", "coleta de valores faltantes"
 
     # Nulo quando o login falhou antes de identificar um usuário válido.
     usuario = models.ForeignKey(

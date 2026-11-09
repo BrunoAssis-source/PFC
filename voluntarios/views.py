@@ -10,6 +10,7 @@ from auditoria.servicos import registrar
 from autenticacao.models import Usuario
 from autenticacao.permissoes import exige_perfil
 from catalogo.models import OpcaoDominio
+from estudos.models import Estudo
 
 from . import cpf as cpf_util
 from .coleta import concluir_se_nao_ha_o_que_perguntar, proxima_variavel, registrar_resposta, respostas_pendentes
@@ -89,18 +90,19 @@ def vincular(request, id):
                 messages.error(request, erro)
         return redirect("voluntarios:detalhe", id=voluntario.id)
     estudo = form.cleaned_data["estudo"]
-    _, criada = Participacao.objects.get_or_create(
+    participacao, criada = Participacao.objects.get_or_create(
         voluntario=voluntario,
         estudo=estudo,
         defaults={"tcle_versao": TCLE_VERSAO_ATUAL, "registrado_por": request.user},
     )
+    objeto = f"{voluntario.codigo_hmac[:8]} em {estudo.nome}"
     if criada:
-        registrar(
-            Acao.PARTICIPACAO_VINCULO,
-            request=request,
-            usuario=request.user,
-            objeto=f"{voluntario.codigo_hmac[:8]} em {estudo.nome}",
-        )
+        registrar(Acao.PARTICIPACAO_VINCULO, request=request, usuario=request.user, objeto=objeto)
+    if request.POST.get("seguir") == "coleta":
+        # Vindo da lista de pendências: segue direto para a coleta, que pede só o que falta.
+        registrar(Acao.PENDENCIA_COLETA, request=request, usuario=request.user, objeto=objeto)
+        return redirect("voluntarios:coleta", id=voluntario.id, participacao_id=participacao.id)
+    if criada:
         messages.success(request, "Voluntário vinculado ao estudo.")
     else:
         messages.info(request, "Este voluntário já participa do estudo.")
@@ -112,6 +114,9 @@ def coletar(request, id, participacao_id):
     participacao = get_object_or_404(
         Participacao.objects.select_related("estudo", "voluntario"), pk=participacao_id, voluntario_id=id
     )
+    if participacao.estudo.situacao != Estudo.Situacao.ATIVO:
+        messages.error(request, "Este estudo não está ativo.")
+        return redirect("voluntarios:detalhe", id=id)
     em_coleta = participacao.situacao == Participacao.Situacao.EM_COLETA
     if not em_coleta and participacao.situacao not in (Participacao.Situacao.ELIMINADA, Participacao.Situacao.CONCLUIDA):
         return redirect("voluntarios:detalhe", id=id)

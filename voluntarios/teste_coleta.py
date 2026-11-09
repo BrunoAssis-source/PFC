@@ -53,20 +53,20 @@ def participacao(profissional, estudo):
     return nova_participacao(profissional, estudo)
 
 
-def test_pergunta_primeiro_as_comuns_e_por_ultimo_as_sensiveis(estudo):
+def test_pergunta_primeiro_as_comuns_e_por_ultimo_as_sensiveis(participacao, estudo):
     criterio(estudo, "pessoa_com_deficiencia", "falso")
     criterio(estudo, "numero_filhos", "maior_igual", valor_numero=1)
     criterio(estudo, "raca_cor", "esta_em", opcoes("raca_cor", "branca", "preta"))
     criterio(estudo, "sexo_ao_nascer", "e", opcoes("sexo_ao_nascer", "feminino"))
-    ordem = [v.codigo for v in variaveis_da_coleta(estudo)]
+    ordem = [v.codigo for v in variaveis_da_coleta(participacao)]
     assert set(ordem[-2:]) == {"pessoa_com_deficiencia", "raca_cor"}
     assert set(ordem[:2]) == {"numero_filhos", "sexo_ao_nascer"}
 
 
-def test_variavel_derivada_pergunta_as_origens(estudo):
+def test_variavel_derivada_pergunta_as_origens(participacao, estudo):
     criterio(estudo, "idade_anos", "maior_igual", valor_numero=18)
     criterio(estudo, "renda_per_capita", "menor_igual", valor_numero=1000)
-    codigos = {v.codigo for v in variaveis_da_coleta(estudo)}
+    codigos = {v.codigo for v in variaveis_da_coleta(participacao)}
     assert codigos == {"data_nascimento", "renda_familiar_mensal", "pessoas_no_domicilio"}
 
 
