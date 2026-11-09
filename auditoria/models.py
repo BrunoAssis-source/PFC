@@ -22,6 +22,9 @@ class RegistroAuditoria(models.Model):
         VOLUNTARIO_DUPLICADO = "voluntario_duplicado", "cadastro de voluntário repetido"
         VOLUNTARIO_LEITURA = "voluntario_leitura", "leitura de voluntário"
         PARTICIPACAO_VINCULO = "participacao_vinculo", "vínculo a estudo com TCLE"
+        COLETA_RESPOSTA = "coleta_resposta", "resposta de coleta"
+        SENSIVEL_RESPOSTA = "sensivel_resposta", "resposta a variável sensível"
+        COLETA_ELIMINACAO = "coleta_eliminacao", "coleta encerrada por critério"
 
     # Nulo quando o login falhou antes de identificar um usuário válido.
     usuario = models.ForeignKey(
