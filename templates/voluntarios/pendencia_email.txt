@@ -1,0 +1,9 @@
+Olá, {{ profissional.nome_completo }}.
+
+Surgiram pendências de coleta no estudo {{ estudo.nome }}.
+
+Voluntários, pelo código: {{ codigos }}
+
+Abra Pendências no UniData para ver o que falta coletar. Este aviso não traz CPF, valores coletados nem critérios.
+
+Mensagem automática do UniData. Não responda este email.

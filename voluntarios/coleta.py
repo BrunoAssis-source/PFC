@@ -1,17 +1,12 @@
-import logging
 from datetime import date
 from decimal import Decimal
 
-from django.core.mail import EmailMultiAlternatives
 from django.db import connection, transaction
-from django.template.loader import render_to_string
 from django.utils import timezone
 
+from .email import enviar
 from .models import Participacao, ValorColetado, ValorSensivel
-from .pendencias import variaveis_faltantes
-
-logger = logging.getLogger(__name__)
-
+from .pendencias import sincronizar_notificacoes, variaveis_faltantes
 
 class _Desfazer(Exception):
     """Desfaz a transação de conferência. Nada da coleta chega a ser gravado."""
@@ -126,6 +121,8 @@ def concluir(participacao):
     participacao.encerrada_em = timezone.now()
     participacao.save(update_fields=["situacao", "encerrada_em"])
     notificar_pesquisador(participacao)
+    # O voluntário acaba de entrar na base e pode estar pendente nos outros estudos ativos.
+    sincronizar_notificacoes(voluntario=participacao.voluntario)
 
 
 def concluir_se_nao_ha_o_que_perguntar(participacao):
@@ -141,13 +138,11 @@ def notificar_pesquisador(participacao):
         "estudo": estudo,
         "codigo": participacao.voluntario.codigo_hmac[:8],
     }
-    mensagem = EmailMultiAlternatives(
+    # A coleta já foi gravada, então a falha do envio não a desfaz.
+    enviar(
+        estudo.pesquisador.email,
         f"Coleta concluída no estudo {estudo.nome}",
-        render_to_string("voluntarios/coleta_concluida_email.txt", contexto),
-        to=[estudo.pesquisador.email],
+        "voluntarios/coleta_concluida_email.txt",
+        contexto,
+        "coleta concluída ao pesquisador",
     )
-    try:
-        mensagem.send()
-    except Exception:
-        # A coleta já foi gravada, então a falha do envio não a desfaz.
-        logger.exception("Falha ao notificar o pesquisador da coleta concluída.")

@@ -151,7 +151,7 @@ def test_RNF10_falha_no_email_nao_desfaz_a_coleta(cliente, participacao, estudo,
     participacao.refresh_from_db()
     assert participacao.situacao == Participacao.Situacao.CONCLUIDA
     assert ValorColetado.objects.count() == 1
-    assert "Falha ao notificar o pesquisador" in caplog.text
+    assert "Falha ao enviar o aviso" in caplog.text
 
 
 def test_estudo_sem_criterios_conclui_ao_abrir(cliente, participacao):

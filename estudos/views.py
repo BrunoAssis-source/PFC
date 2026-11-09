@@ -13,6 +13,8 @@ from autenticacao.permissoes import exige_perfil
 from catalogo.busca import buscar_criterios, selecionaveis
 from catalogo.models import OpcaoDominio
 
+from voluntarios.pendencias import sincronizar_notificacoes
+
 from .forms import CriterioForm, EstudoForm, VariavelPropostaForm
 from .models import Criterio, Estudo
 
@@ -62,6 +64,8 @@ def editar(request, id):
     if request.method == "POST" and form.is_valid():
         form.save()
         registrar(RegistroAuditoria.Acao.ESTUDO_EDICAO, request=request, usuario=request.user, objeto=estudo.nome)
+        # Ativar o estudo pode deixar voluntários já registrados pendentes.
+        sincronizar_notificacoes(estudo=estudo)
         return redirect("estudos:detalhe", id=estudo.id)
     return render(request, "estudos/formulario.html", {"form": form, "estudo": estudo})
 
@@ -212,6 +216,7 @@ def adicionar_criterio(request, id, variavel_id):
         RegistroAuditoria.Acao.CRITERIO_ADICAO, request=request, usuario=request.user,
         objeto=f"{estudo.nome}. {form.instance.frase}",
     )
+    sincronizar_notificacoes(estudo=estudo)
     return render(request, "estudos/_regras.html", contexto_regras(estudo))
 
 
@@ -235,6 +240,7 @@ def editar_criterio(request, id, criterio_id):
             RegistroAuditoria.Acao.CRITERIO_EDICAO, request=request, usuario=request.user,
             objeto=f"{estudo.nome}. Antes: {antes}. Depois: {criterio.frase}",
         )
+    sincronizar_notificacoes(estudo=estudo)
     return render(request, "estudos/_regras.html", contexto_regras(estudo))
 
 
@@ -276,4 +282,5 @@ def remover_criterio(request, id, criterio_id):
         RegistroAuditoria.Acao.CRITERIO_REMOCAO, request=request, usuario=request.user,
         objeto=f"{estudo.nome}. {frase}",
     )
+    sincronizar_notificacoes(estudo=estudo)
     return render(request, "estudos/_regras.html", contexto_regras(estudo))

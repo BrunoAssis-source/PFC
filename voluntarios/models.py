@@ -53,6 +53,16 @@ class Participacao(models.Model):
         constraints = [models.UniqueConstraint(fields=["voluntario", "estudo"], name="participacao_unica")]
 
 
+class PendenciaNotificada(models.Model):
+    # Guarda o que já foi avisado, para o email sair quando a pendência surge e não a cada consulta.
+    voluntario = models.ForeignKey(Voluntario, on_delete=models.CASCADE, related_name="+")
+    estudo = models.ForeignKey(Estudo, on_delete=models.CASCADE, related_name="+")
+    notificada_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["voluntario", "estudo"], name="pendencia_notificada_unica")]
+
+
 class ValorBase(models.Model):
     # Uma linha por valor coletado. O voluntário entra só pelo código HMAC, sem chave estrangeira para o CPF.
     class Fonte(models.TextChoices):

@@ -3,7 +3,8 @@ from django.db import connection
 from catalogo.models import Variavel
 from estudos.models import Estudo
 
-from .models import Voluntario
+from .email import enviar
+from .models import PendenciaNotificada, Voluntario
 
 
 def _consultar(sql, parametros=()):
@@ -58,3 +59,41 @@ def pendentes(estudo_id=None, voluntario_id=None):
         }
         for v, e in pares
     ]
+
+
+def sincronizar_notificacoes(estudo=None, voluntario=None):
+    """RN29: avisa o profissional quando surge uma pendência nova, uma vez por pendência.
+
+    Compara as pendências de agora com as já avisadas. As que deixaram de ser pendentes saem do registro, para um
+    novo vencimento avisar de novo. O aviso vai ao profissional que cadastrou o voluntário e leva só o estudo e os
+    códigos curtos, sem CPF, valores nem critérios.
+    """
+    atuais = pendentes(estudo.id if estudo else None, voluntario.id if voluntario else None)
+    chaves = {(linha["voluntario"].id, linha["estudo"].id) for linha in atuais}
+
+    avisadas = PendenciaNotificada.objects.all()
+    if estudo:
+        avisadas = avisadas.filter(estudo=estudo)
+    if voluntario:
+        avisadas = avisadas.filter(voluntario=voluntario)
+    ja_avisadas = {(n.voluntario_id, n.estudo_id) for n in avisadas}
+    avisadas.exclude(pk__in=[n.pk for n in avisadas if (n.voluntario_id, n.estudo_id) in chaves]).delete()
+
+    novas = [linha for linha in atuais if (linha["voluntario"].id, linha["estudo"].id) not in ja_avisadas]
+    PendenciaNotificada.objects.bulk_create(
+        [PendenciaNotificada(voluntario=linha["voluntario"], estudo=linha["estudo"]) for linha in novas]
+    )
+
+    por_destino = {}
+    for linha in novas:
+        profissional = linha["voluntario"].criado_por
+        if profissional.is_active:
+            por_destino.setdefault((profissional, linha["estudo"]), []).append(linha["codigo"])
+    for (profissional, estudo_da_pendencia), codigos in por_destino.items():
+        enviar(
+            profissional.email,
+            f"Nova pendência de coleta no estudo {estudo_da_pendencia.nome}",
+            "voluntarios/pendencia_email.txt",
+            {"profissional": profissional, "estudo": estudo_da_pendencia, "codigos": ", ".join(sorted(codigos))},
+            "nova pendência ao profissional",
+        )
