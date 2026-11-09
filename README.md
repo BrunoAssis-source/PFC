@@ -31,7 +31,7 @@ Uma caixa "Como vai ficar" mostra a frase do critério enquanto ele é montado, 
 
 Município de residência é escolhido em cascata: primeiro o estado, depois os municípios dele, com filtro pelo nome. A seleção atravessa estados, então um mesmo critério pode juntar cidades de lugares diferentes. A lista é a oficial do IBGE (27 estados e 5.571 municípios, consultada em novembro de 2026) e está em `catalogo/dados/`, carregada por migration como dado fixo do sistema. Em funcionamento a aplicação não consulta nenhuma API externa, e para atualizar a lista basta gerar os dois arquivos de novo a partir da API de localidades do IBGE e criar uma migration.
 
-Cada regra da lista à direita tem Editar e Remover. Editar abre o critério na coluna do meio com os valores atuais, e a variável fica fixa: para usar outra, remove-se o critério e adiciona-se um novo. Tudo o mais pode mudar, como incluir ou excluir, a condição e os valores. Remover pede confirmação na própria linha, com "Sim, remover" e "Não", e o Esc desiste.
+Estudo encerrado não aceita incluir, alterar nem remover critério. A tela abre só para consulta, sem os botões, e o servidor recusa as rotas de alteração com acesso negado. Cada regra da lista à direita tem Editar e Remover. Editar abre o critério na coluna do meio com os valores atuais, e a variável fica fixa: para usar outra, remove-se o critério e adiciona-se um novo. Tudo o mais pode mudar, como incluir ou excluir, a condição e os valores. Remover pede confirmação na própria linha, com "Sim, remover" e "Não", e o Esc desiste.
 
 A tela recusa o critério que não restringe ninguém. Numa lista de opções, marcar todas dá o aviso "Esse critério inclui todos os participantes" (ou "exclui", quando a regra é de exclusão). Numa escala de níveis, vale o mesmo para "a partir do nível mais baixo" e "até o nível mais alto". Os avisos aparecem na prévia, que desabilita o botão, e o servidor repete a checagem.
 
@@ -80,7 +80,6 @@ A leitura de valor sensível por outra tela, como a do pesquisador, ainda não e
 
 Ficaram de fora, por decisão de escopo, estes itens.
 
-- Regras por situação do estudo. Hoje é possível adicionar, editar e remover critério em estudo de qualquer situação. A proposta é deixar rascunho livre, pedir confirmação com aviso em estudo ativo e tornar o estudo encerrado somente leitura, inclusive para adicionar.
 - Motivo da alteração. Em estudo ativo, pedir ao pesquisador a razão da mudança e gravá-la no registro de auditoria.
 - Travamento por triagem iniciada. Quando existir verificação de elegibilidade, o critério de um estudo com triagem não deve mudar. Alterar passaria a exigir uma nova versão do estudo. Hoje não há dado de triagem para detectar isso.
 - Histórico e desfazer. A remoção apaga o critério de verdade, e só o registro de auditoria guarda a frase. Manter os critérios removidos ou alterados como versões permitiria consultar o estudo como ele estava em uma data e desfazer uma remoção.

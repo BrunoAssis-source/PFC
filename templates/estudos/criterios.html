@@ -21,7 +21,8 @@
     <section class="criterios-bloco" aria-label="Catálogo de variáveis">
         <label class="form-label fw-semibold" for="busca-variavel">Buscar variável</label>
         <input type="search" id="busca-variavel" class="criterios-busca" autocomplete="off"
-               placeholder="idade, renda, escolaridade..." aria-controls="resultados-busca">
+               placeholder="idade, renda, escolaridade..." aria-controls="resultados-busca"
+               {% if somente_leitura %}disabled{% endif %}>
         <p class="criterios-ajuda">Aceita sinônimos: "grau de instrução", "bolsa família", "cidade"...</p>
 
         <div id="resultados-busca" class="arvore" aria-live="polite" hidden></div>
@@ -35,7 +36,7 @@
                             {% for variavel in grupo.variaveis %}
                                 <li>
                                     <button type="button" class="variavel-botao" data-variavel="{{ variavel.id }}"
-                                            {% if variavel.id in usadas_ids %}disabled aria-disabled="true"{% endif %}
+                                            {% if somente_leitura or variavel.id in usadas_ids %}disabled aria-disabled="true"{% endif %}
                                             {% if variavel.id == variavel_inicial %}aria-current="true"{% endif %}
                                             data-url="{% url 'estudos:configurar_criterio' estudo.id variavel.id %}"
                                             title="{{ variavel.definicao }}">
@@ -52,7 +53,11 @@
     </section>
 
     <section class="criterios-bloco" id="configuracao" aria-label="Configuração do critério" aria-live="polite">
-        <p class="config-inicial">Escolha uma variável no catálogo para definir a condição.</p>
+        {% if somente_leitura %}
+            <p class="config-inicial">Estudo encerrado: os critérios podem ser consultados, mas não alterados.</p>
+        {% else %}
+            <p class="config-inicial">Escolha uma variável no catálogo para definir a condição.</p>
+        {% endif %}
     </section>
 
     <aside class="criterios-bloco" id="regras" aria-label="Critérios do estudo" tabindex="-1">

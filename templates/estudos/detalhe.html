@@ -58,7 +58,7 @@
 
 <div class="painel-formulario-acoes">
     <a class="painel-acao" href="{% url 'estudos:criterios' estudo.id %}">
-        {% if resumo %}Gerenciar critérios{% else %}<span aria-hidden="true">+</span> Definir critérios{% endif %}
+        {% if estudo.situacao == "encerrado" %}Ver critérios{% elif resumo %}Gerenciar critérios{% else %}<span aria-hidden="true">+</span> Definir critérios{% endif %}
     </a>
     <a class="painel-voltar" href="{% url 'estudos:listar' %}">Voltar para os estudos</a>
 </div>

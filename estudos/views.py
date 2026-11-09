@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.db.models import Count
+from django.core.exceptions import PermissionDenied
 from django.http import Http404
 from django.urls import reverse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -19,6 +20,15 @@ from .models import Criterio, Estudo
 def estudo_do_pesquisador(request, id):
     # Filtrar pelo dono aqui faz estudo alheio responder 404, sem confirmar que existe.
     return get_object_or_404(Estudo, pk=id, pesquisador=request.user)
+
+
+def estudo_editavel(request, id):
+    # RN20: estudo encerrado não aceita inclusão, alteração nem remoção de critérios, e o servidor recusa mesmo
+    # quando a tela não oferece o botão.
+    estudo = estudo_do_pesquisador(request, id)
+    if estudo.situacao == Estudo.Situacao.ENCERRADO:
+        raise PermissionDenied("Estudo encerrado não aceita alteração de critérios.")
+    return estudo
 
 
 @exige_perfil(Usuario.Perfil.PESQUISADOR)
@@ -98,6 +108,7 @@ def arvore_do_catalogo():
 def criterios(request, id):
     estudo = estudo_do_pesquisador(request, id)
     contexto = contexto_regras(estudo)
+    contexto["somente_leitura"] = estudo.situacao == Estudo.Situacao.ENCERRADO
     contexto["arvore"] = arvore_do_catalogo()
     inicial = request.GET.get("variavel", "")
     # Só variável que a tela abre de fato: um id inválido faria a configuração
@@ -123,7 +134,7 @@ def buscar_variaveis(request, id):
 
 @exige_perfil(Usuario.Perfil.PESQUISADOR)
 def configurar_criterio(request, id, variavel_id):
-    estudo = estudo_do_pesquisador(request, id)
+    estudo = estudo_editavel(request, id)
     variavel = variavel_selecionavel(variavel_id)
     return render(request, "estudos/_configuracao.html", contexto_configuracao(estudo, variavel))
 
@@ -151,7 +162,7 @@ def numero_do_campo(valor):
 
 @exige_perfil(Usuario.Perfil.PESQUISADOR)
 def opcoes_filhas(request, id, variavel_id):
-    estudo_do_pesquisador(request, id)
+    estudo_editavel(request, id)
     variavel = variavel_selecionavel(variavel_id)
     pai = request.GET.get("pai", "")
     if not variavel.dominio.superior_id or not pai.isdigit():
@@ -171,7 +182,7 @@ def criterio_da_requisicao(request, estudo, variavel, dados):
 @require_POST
 def previa_criterio(request, id, variavel_id):
     # POST porque uma lista grande de municípios não cabe no endereço da requisição.
-    estudo = estudo_do_pesquisador(request, id)
+    estudo = estudo_editavel(request, id)
     form = criterio_da_requisicao(request, estudo, variavel_selecionavel(variavel_id), request.POST)
     completo = form.is_valid()
     contexto = {"completo": completo, "pendencia": form.pendencia(), "frase": form.instance.frase if completo else ""}
@@ -181,7 +192,7 @@ def previa_criterio(request, id, variavel_id):
 @exige_perfil(Usuario.Perfil.PESQUISADOR)
 @require_POST
 def adicionar_criterio(request, id, variavel_id):
-    estudo = estudo_do_pesquisador(request, id)
+    estudo = estudo_editavel(request, id)
     form = criterio_da_requisicao(request, estudo, variavel_selecionavel(variavel_id), request.POST)
     if not form.is_valid():
         contexto = {"completo": False, "pendencia": form.pendencia(), "frase": ""}
@@ -197,7 +208,7 @@ def adicionar_criterio(request, id, variavel_id):
 @exige_perfil(Usuario.Perfil.PESQUISADOR)
 @require_http_methods(["GET", "POST"])
 def editar_criterio(request, id, criterio_id):
-    estudo = estudo_do_pesquisador(request, id)
+    estudo = estudo_editavel(request, id)
     criterio = get_object_or_404(Criterio.objects.select_related("variavel"), pk=criterio_id, estudo=estudo)
     if request.method == "GET":
         return render(request, "estudos/_configuracao.html", contexto_configuracao(estudo, criterio.variavel, criterio))
@@ -247,7 +258,7 @@ def propor_variavel(request, id):
 @exige_perfil(Usuario.Perfil.PESQUISADOR)
 @require_POST
 def remover_criterio(request, id, criterio_id):
-    estudo = estudo_do_pesquisador(request, id)
+    estudo = estudo_editavel(request, id)
     criterio = get_object_or_404(Criterio, pk=criterio_id, estudo=estudo)
     frase = criterio.frase
     criterio.delete()

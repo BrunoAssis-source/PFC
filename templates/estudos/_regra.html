@@ -1,5 +1,6 @@
 <li class="regra">
     <span class="regra-texto">{{ criterio.descricao }}</span>
+    {% if estudo.situacao != "encerrado" %}
     <div class="regra-acoes">
         <button type="button" class="regra-editar" data-url="{% url 'estudos:editar_criterio' estudo.id criterio.id %}" aria-label="Editar critério: {{ criterio.descricao }}">Editar</button>
         <button type="button" class="regra-remover" data-pedir-remocao aria-label="Remover critério: {{ criterio.descricao }}">×</button>
@@ -10,4 +11,5 @@
         <button type="submit" class="regra-sim">Sim, remover</button>
         <button type="button" class="regra-nao" data-cancelar-remocao>Não</button>
     </form>
+    {% endif %}
 </li>
