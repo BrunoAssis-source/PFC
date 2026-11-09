@@ -106,12 +106,24 @@ class CriterioForm(forms.ModelForm):
                 return
 
     def recusar_todas_as_opcoes(self, dados, escolhidas):
-        # Marcar todas as opções de uma lista não restringe ninguém: na inclusão
+        # Um critério que cobre todas as opções não restringe ninguém: na inclusão
         # aceita todo mundo, na exclusão barra todo mundo.
-        if dados["operador"] != Operador.ESTA_EM or len(escolhidas) != self.fields["opcoes"].queryset.count():
+        if not self.cobre_todas_as_opcoes(dados["operador"], escolhidas):
             return
         verbo = "exclui" if dados.get("tipo_regra") == Criterio.TipoRegra.EXCLUSAO else "inclui"
         self.add_error("opcoes", f"Esse critério {verbo} todos os participantes.")
+
+    def cobre_todas_as_opcoes(self, operador, escolhidas):
+        niveis = self.fields["opcoes"].queryset
+        if self.variavel.tipo != Variavel.Tipo.ORDINAL:
+            return operador == Operador.ESTA_EM and len(escolhidas) == niveis.count()
+
+        # Na escala, um nível só já cobre tudo quando é "a partir do mais baixo"
+        # ou "até o mais alto".
+        ordem = [nivel.pk for nivel in niveis.order_by("ordem")]
+        if operador == Operador.MAIOR_IGUAL:
+            return escolhidas[0].pk == ordem[0]
+        return operador == Operador.MENOR_IGUAL and escolhidas[0].pk == ordem[-1]
 
     def pendencia(self):
         for erros in self.errors.values():

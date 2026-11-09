@@ -330,8 +330,8 @@ def test_lista_de_duas_opcoes_recusa_marcar_as_duas_e_aceita_uma():
     assert formulario("zona_residencia", {"tipo_regra": "inclusao", "operador": "esta_em", "opcoes": ambas[:1]}).is_valid()
 
 
-def test_ordinal_nao_cai_na_regra_de_todas_as_opcoes():
-    escolhida = [opcao.id for opcao in opcoes("escolaridade", "sem_instrucao")]
+def test_ordinal_com_nivel_intermediario_e_aceito():
+    escolhida = [opcao.id for opcao in opcoes("escolaridade", "medio_completo")]
 
     form = formulario("escolaridade", {"tipo_regra": "inclusao", "operador": "maior_igual", "opcoes": escolhida})
 
