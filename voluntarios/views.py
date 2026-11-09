@@ -1,5 +1,7 @@
 from django.contrib import messages
 from django.db import IntegrityError, transaction
+from django.http import Http404
+from django.urls import reverse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
@@ -7,6 +9,7 @@ from auditoria.models import RegistroAuditoria
 from auditoria.servicos import registrar
 from autenticacao.models import Usuario
 from autenticacao.permissoes import exige_perfil
+from catalogo.models import OpcaoDominio
 
 from . import cpf as cpf_util
 from .coleta import concluir_se_terminou, proxima_variavel, registrar_resposta
@@ -145,5 +148,28 @@ def coletar(request, id, participacao_id):
         form = RespostaForm(variavel=variavel)
 
     if em_coleta:
-        return render(request, "voluntarios/coleta.html", {"participacao": participacao, "variavel": variavel, "form": form})
+        contexto = {"participacao": participacao, "variavel": variavel, "form": form}
+        if variavel.dominio_id and variavel.dominio.superior_id:
+            contexto["estados"] = variavel.dominio.superior.opcoes.all()
+            contexto["url_filhas"] = reverse("voluntarios:opcoes_filhas", args=[id, participacao.id])
+        return render(request, "voluntarios/coleta.html", contexto)
     return render(request, "voluntarios/coleta_encerrada.html", {"participacao": participacao, "eliminada": participacao.situacao == Participacao.Situacao.ELIMINADA})
+
+
+@exige_perfil(Usuario.Perfil.PROFISSIONAL)
+def opcoes_filhas(request, id, participacao_id):
+    participacao = get_object_or_404(
+        Participacao.objects.select_related("estudo"),
+        pk=participacao_id,
+        voluntario_id=id,
+        situacao=Participacao.Situacao.EM_COLETA,
+    )
+    # Só a variável que está sendo perguntada, senão o endpoint listaria o domínio de qualquer variável.
+    variavel = proxima_variavel(participacao)
+    pai = request.GET.get("pai", "")
+    if variavel is None or not variavel.dominio_id or not variavel.dominio.superior_id or not pai.isdigit():
+        raise Http404
+    pai = get_object_or_404(OpcaoDominio, pk=int(pai), dominio_id=variavel.dominio.superior_id)
+    return render(
+        request, "estudos/_opcoes_filhas.html", {"opcoes": variavel.dominio.opcoes.filter(pai=pai), "tipo": "radio"}
+    )
