@@ -174,6 +174,10 @@ def adicionar_criterio(request, id, variavel_id):
         contexto = {"completo": False, "pendencia": form.pendencia(), "frase": ""}
         return render(request, "estudos/_previa.html", contexto, status=422)
     form.save()
+    registrar(
+        RegistroAuditoria.Acao.CRITERIO_ADICAO, request=request, usuario=request.user,
+        objeto=f"{estudo.nome}. {form.instance.frase}",
+    )
     return render(request, "estudos/_regras.html", contexto_regras(estudo))
 
 
@@ -185,11 +189,18 @@ def editar_criterio(request, id, criterio_id):
     if request.method == "GET":
         return render(request, "estudos/_configuracao.html", contexto_configuracao(estudo, criterio.variavel, criterio))
 
+    # A frase antes tem de sair já, porque validar o formulário altera a instância.
+    antes = criterio.frase
     form = CriterioForm(request.POST, variavel=criterio.variavel, instance=criterio)
     if not form.is_valid():
         contexto = {"completo": False, "pendencia": form.pendencia(), "frase": ""}
         return render(request, "estudos/_previa.html", contexto, status=422)
     form.save()
+    if criterio.frase != antes:
+        registrar(
+            RegistroAuditoria.Acao.CRITERIO_EDICAO, request=request, usuario=request.user,
+            objeto=f"{estudo.nome}. Antes: {antes}. Depois: {criterio.frase}",
+        )
     return render(request, "estudos/_regras.html", contexto_regras(estudo))
 
 
@@ -224,5 +235,11 @@ def propor_variavel(request, id):
 @require_POST
 def remover_criterio(request, id, criterio_id):
     estudo = estudo_do_pesquisador(request, id)
-    get_object_or_404(Criterio, pk=criterio_id, estudo=estudo).delete()
+    criterio = get_object_or_404(Criterio, pk=criterio_id, estudo=estudo)
+    frase = criterio.frase
+    criterio.delete()
+    registrar(
+        RegistroAuditoria.Acao.CRITERIO_REMOCAO, request=request, usuario=request.user,
+        objeto=f"{estudo.nome}. {frase}",
+    )
     return render(request, "estudos/_regras.html", contexto_regras(estudo))

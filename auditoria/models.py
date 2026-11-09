@@ -14,6 +14,9 @@ class RegistroAuditoria(models.Model):
         ESTUDO_EDICAO = "estudo_edicao", "edição de estudo"
         USUARIO_EDICAO = "usuario_edicao", "edição de usuário"
         USUARIO_EXCLUSAO = "usuario_exclusao", "exclusão de usuário"
+        CRITERIO_ADICAO = "criterio_adicao", "adição de critério"
+        CRITERIO_EDICAO = "criterio_edicao", "edição de critério"
+        CRITERIO_REMOCAO = "criterio_remocao", "remoção de critério"
 
     # Nulo quando o login falhou antes de identificar um usuário válido.
     usuario = models.ForeignKey(
@@ -26,7 +29,8 @@ class RegistroAuditoria(models.Model):
     )
     email_tentativa = models.EmailField("email informado", blank=True)
     acao = models.CharField("ação", max_length=20, choices=Acao.choices)
-    objeto = models.CharField("objeto", max_length=150, blank=True)
+    # Texto sem limite porque a edição de critério guarda a frase antes e depois.
+    objeto = models.TextField("objeto", blank=True)
     ip = models.GenericIPAddressField("endereço IP", null=True, blank=True)
     criado_em = models.DateTimeField("criado em", auto_now_add=True)
 
