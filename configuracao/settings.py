@@ -30,6 +30,15 @@ if not SECRET_KEY:
         "Use o .env.example como modelo."
     )
 
+# Duas chaves independentes: trocar a do HMAC invalida a busca por CPF, perder a de cifra torna os CPFs irrecuperáveis.
+CHAVE_HMAC = os.environ.get("CHAVE_HMAC", "")
+CHAVE_CIFRA = os.environ.get("CHAVE_CIFRA", "")
+if not CHAVE_HMAC or not CHAVE_CIFRA:
+    raise ImproperlyConfigured(
+        "Defina CHAVE_HMAC e CHAVE_CIFRA no arquivo .env ou no ambiente. "
+        "O README explica como gerar cada uma."
+    )
+
 ALLOWED_HOSTS = [h.strip() for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",") if h.strip()]
 if DEBUG and not ALLOWED_HOSTS:
     ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
