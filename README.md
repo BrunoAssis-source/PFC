@@ -8,7 +8,7 @@ A classificação produzida pelo sistema é sugestão. A decisão sobre quem ent
 
 Projeto Final de Curso do Bacharelado em Sistemas de Informação da Universidade de Mogi das Cruzes.
 
-Autores: Bruno de Faria Assis e João Gabriel Dos Santos.
+Autor: Bruno de Faria Assis.
 
 ## Estado atual
 
