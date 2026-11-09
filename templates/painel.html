@@ -34,7 +34,7 @@
                 <span>Estudos</span>
             </a>
         {% else %}
-            <a class="painel-item {% if rota == 'coleta' %}ativo{% endif %}" href="{% url 'coleta' %}">
+            <a class="painel-item {% if rota == 'coleta' and request.resolver_match.app_name != 'voluntarios' %}ativo{% endif %}" href="{% url 'coleta' %}">
                 {% include "icones/icone.html" with nome="registro" %}
                 <span>Registro</span>
             </a>
