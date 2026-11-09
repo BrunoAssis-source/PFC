@@ -39,11 +39,24 @@ Algumas variáveis sim ou não têm texto próprio para cada resposta, para a fr
 
 O mesmo critério pode se repetir no estudo, por exemplo idade mínima na inclusão e idade máxima na exclusão. Variável de texto livre não serve de critério.
 
-Faltam o cadastro de voluntários, os valores coletados e a verificação de elegibilidade. Por isso as telas do profissional, registro de dados e pendências, existem ainda sem conteúdo.
+O profissional identifica o voluntário em `/voluntarios/`, pelo CPF e só por ele, sem nome nem contato. O sistema valida os dígitos, calcula o código HMAC-SHA256 e procura por esse código. Se o voluntário existe, a tela abre o cadastro dele. Se não existe, oferece cadastrar. O CPF é gravado cifrado (Fernet) ao lado do código, que tem restrição de unicidade no banco, então o mesmo CPF não gera dois voluntários nem quando dois profissionais cadastram ao mesmo tempo. Na tela o CPF aparece mascarado (`***.982.247-**`) e só os 11 dígitos digitados na busca passam pelo servidor.
+
+O voluntário é vinculado a um estudo ativo com o aceite do TCLE. O profissional marca que conferiu o documento físico assinado, e o sistema grava a versão do termo, a data e quem registrou. Sem a marcação não há participação, e o mesmo voluntário não entra duas vezes no mesmo estudo. Qualquer profissional pode vincular voluntário a qualquer estudo ativo.
+
+A auditoria registra busca, cadastro, tentativa de cadastro repetido, leitura da ficha e vínculo com TCLE. O objeto do registro leva só os oito primeiros caracteres do código, nunca o CPF.
+
+Faltam os valores coletados e a verificação de elegibilidade. Por isso as telas de registro de dados e pendências existem ainda sem conteúdo.
 
 O app `auditoria` registra login com sucesso e com falha, logout, criação de conta, redefinição de senha, negação de acesso por perfil insuficiente e leitura ou edição de estudo, e também adição, edição e remoção de critério. Cada registro grava usuário, ação, IP e data. A tela fica em `/auditoria/`, aberta a quem tem `is_staff`, do jeito que o Django admin já reconhece como administrador, sem depender do perfil de pesquisador ou profissional. Pelo admin do Django o mesmo registro aparece sem opção de editar nem excluir. O texto do objeto não tem limite de tamanho, porque na edição de critério o registro guarda a frase antes e depois, e uma lista de municípios passa de 150 caracteres. Se a edição não muda a frase, nada é registrado.
 
 Ainda falta um ponto de auditoria, o acesso a variável marcada como sensível. O campo `sensivel` existe no catálogo, mas nenhuma tela ainda lê ou restringe por ele. O ponto entra na auditoria quando essa funcionalidade existir.
+
+### Trabalho futuro na identificação de voluntários
+
+- Revogação do TCLE. A situação `revogada` existe na participação, mas nenhuma tela a aplica. Falta decidir o que acontece com os dados já coletados.
+- Designação de profissional por estudo. Hoje qualquer profissional vincula voluntário a qualquer estudo ativo.
+- Texto do TCLE no sistema. A versão é uma constante em `voluntarios/models.py`, e o termo em si fica no documento físico do comitê de ética.
+- Rotação das chaves. Trocar `CHAVE_HMAC` ou `CHAVE_CIFRA` exige recalcular os registros existentes, e não há comando para isso.
 
 ### Trabalho futuro nos critérios
 
@@ -99,6 +112,7 @@ Ficam no arquivo `.env`, na raiz, que não é versionado. O `settings.py` lê es
 | `DJANGO_DEBUG` | `1` no desenvolvimento, `0` em produção |
 | `DJANGO_ALLOWED_HOSTS` | Domínios separados por vírgula. Obrigatória quando `DJANGO_DEBUG=0` |
 | `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT` | Conexão com o PostgreSQL. O `docker-compose.yml` cria o banco com os mesmos valores |
+| `CHAVE_HMAC`, `CHAVE_CIFRA` | Obrigatórias. Veja abaixo como gerar |
 | `BREVO_API_KEY` | Chave da API transacional do Brevo. Obrigatória apenas quando `DJANGO_DEBUG=0` |
 | `EMAIL_REMETENTE` | Remetente das mensagens, no formato `Nome <endereco@dominio>` |
 
@@ -108,7 +122,16 @@ Para gerar a chave secreta:
 .venv\Scripts\python.exe -c "from django.core.management.utils import get_random_secret_key as g; print(g())"
 ```
 
-A aplicação não sobe sem `DJANGO_SECRET_KEY`. A falha aparece como `ImproperlyConfigured` já no `manage.py check`, com a instrução do que preencher. `BREVO_API_KEY` só é exigida com `DJANGO_DEBUG=0`; no desenvolvimento, deixá-la vazia manda o email para o terminal.
+As duas chaves do CPF são independentes. `CHAVE_HMAC` gera o código de busca e `CHAVE_CIFRA` cifra o CPF. Gere cada uma uma vez, só no ambiente em que vai usar:
+
+```
+.venv\Scripts\python.exe -c "import secrets; print(secrets.token_urlsafe(48))"
+.venv\Scripts\python.exe -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+
+O primeiro comando serve para `CHAVE_HMAC` e o segundo para `CHAVE_CIFRA`. Guarde as duas fora do repositório, num gerenciador de senhas. Perder a `CHAVE_CIFRA` torna os CPFs cifrados irrecuperáveis, e trocar a `CHAVE_HMAC` faz a busca deixar de achar os voluntários já cadastrados. Cada ambiente tem as suas, então um banco não abre com a chave de outro.
+
+A aplicação não sobe sem `DJANGO_SECRET_KEY`, `CHAVE_HMAC` e `CHAVE_CIFRA`. A falha aparece como `ImproperlyConfigured` já no `manage.py check`, com a instrução do que preencher. `BREVO_API_KEY` só é exigida com `DJANGO_DEBUG=0`; no desenvolvimento, deixá-la vazia manda o email para o terminal.
 
 ## Email
 
