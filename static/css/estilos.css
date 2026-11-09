@@ -1444,3 +1444,7 @@ a.painel-item:hover {
     margin: 0;
     font-size: .88rem;
 }
+
+.painel-cabecalho + .painel-secao {
+    margin-top: 1.5rem;
+}
