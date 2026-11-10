@@ -13,3 +13,4 @@ staticfiles/
 .idea/
 
 CLAUDE.md
+env
