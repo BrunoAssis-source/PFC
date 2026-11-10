@@ -5,6 +5,7 @@ from django.core import mail
 from django.urls import reverse
 
 from auditoria.models import RegistroAuditoria
+from catalogo.models import Variavel
 from voluntarios import cpf
 from voluntarios.coleta import proxima_variavel, respostas_pendentes
 from voluntarios.models import Participacao, PendenciaNotificada, ValorColetado, ValorSensivel, Voluntario
@@ -260,7 +261,7 @@ def test_RN29_criterio_novo_em_estudo_ativo_pela_tela_dispara_o_aviso(cliente_pe
     mail.outbox.clear()
 
     resposta = cliente_pesquisadora.post(
-        reverse("estudos:adicionar_criterio", args=[estudo.id, __import__("catalogo.models", fromlist=["Variavel"]).Variavel.objects.get(codigo="numero_filhos").id]),
+        reverse("estudos:adicionar_criterio", args=[estudo.id, Variavel.objects.get(codigo="numero_filhos").id]),
         {"tipo_regra": "inclusao", "operador": "maior_igual", "valor_numero": "1"},
     )
 
@@ -273,7 +274,7 @@ def test_RN29_falha_no_envio_nao_quebra_a_operacao_do_pesquisador(cliente_pesqui
     monkeypatch.setattr("django.core.mail.message.EmailMessage.send", lambda self, *a, **k: (_ for _ in ()).throw(OSError("sem rede")))
 
     resposta = cliente_pesquisadora.post(
-        reverse("estudos:adicionar_criterio", args=[estudo.id, __import__("catalogo.models", fromlist=["Variavel"]).Variavel.objects.get(codigo="numero_filhos").id]),
+        reverse("estudos:adicionar_criterio", args=[estudo.id, Variavel.objects.get(codigo="numero_filhos").id]),
         {"tipo_regra": "inclusao", "operador": "maior_igual", "valor_numero": "1"},
     )
 

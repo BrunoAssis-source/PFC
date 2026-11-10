@@ -4,20 +4,13 @@ import pytest
 from django.urls import reverse
 
 from autenticacao.models import Usuario
-from estudos.models import Criterio, Estudo
+from estudos.models import Estudo
 from estudos.painel import dados_do_painel
 from voluntarios.models import Participacao
 
-from .conftest import CPF_A, CPF_B, criterio, nova_participacao, novo_estudo
+from .conftest import CPF_A, CPF_B, criterio, novo_estudo
 
 Situacao = Participacao.Situacao
-
-
-def com_situacao(participacao, situacao, regra=None):
-    participacao.situacao = situacao
-    participacao.criterio_reprovado = regra
-    participacao.save()
-    return participacao
 
 
 def cpf_de(indice):
