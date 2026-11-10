@@ -12,7 +12,19 @@ Autor: Bruno de Faria Assis.
 
 ## Estado atual
 
-Estão implementados a autenticação com controle de acesso por perfil, o catálogo de variáveis e o cadastro de estudos e critérios.
+Estão implementados a autenticação com controle de acesso por perfil, o catálogo de variáveis, o cadastro de estudos e critérios, a identificação de voluntários por CPF, a coleta com verificação eliminatória, a tela de pendências do profissional, a classificação de elegibilidade no banco (RF10, sem a tela do pesquisador) e o dashboard do pesquisador na tela Início.
+
+Situação dos requisitos do documento:
+
+| Requisito | Situação |
+|---|---|
+| RF01 a RF03 (conta, login, redefinição de senha) | Implementados. No RF01 a conta só ativa depois de confirmar o email, e o documento prevê sessão iniciada no cadastro |
+| RF04 a RF07 (estudos e critérios) | Implementados |
+| RF08 (identificar voluntário) | Implementado, com a conferência do TCLE antes da coleta, que o documento não prevê |
+| RF09 (coleta com verificação eliminatória) | Implementado |
+| RF10 (classificação) | Só a view SQL, sem a tela do pesquisador |
+| RF11 (pendências) | Implementado |
+| RF12 a RF14 (decisão do pesquisador, eliminação de dados, auditoria completa) | RF14 parcial, os outros ainda não existem |
 
 A autenticação cobre o cadastro restrito ao domínio `@alunos.umc.br`, login, recuperação de senha por email e a separação entre pesquisador e profissional, com as rotas de cada um negando acesso a quem não tem o perfil.
 
@@ -90,10 +102,10 @@ A leitura de valor sensível por outra tela, como a do pesquisador, ainda não e
 Ficaram de fora, por decisão de escopo, estes itens.
 
 - Motivo da alteração. Em estudo ativo, pedir ao pesquisador a razão da mudança e gravá-la no registro de auditoria.
-- Travamento por triagem iniciada. Quando existir verificação de elegibilidade, o critério de um estudo com triagem não deve mudar. Alterar passaria a exigir uma nova versão do estudo. Hoje não há dado de triagem para detectar isso.
+- Travamento por triagem iniciada. O critério de um estudo com voluntários já triados não deveria mudar, e alterar passaria a exigir uma nova versão do estudo. Hoje a participação guarda o critério reprovado, mas editar o critério continua livre em estudo ativo.
 - Histórico e desfazer. A remoção apaga o critério de verdade, e só o registro de auditoria guarda a frase. Manter os critérios removidos ou alterados como versões permitiria consultar o estudo como ele estava em uma data e desfazer uma remoção.
 
-Política de privacidade e termos de uso são páginas próprias, abertas sem login, e o cadastro exige a leitura dos dois antes de criar conta. A política já descreve o que está implementado (dado de conta) e o que está previsto para quando o cadastro de participante existir (CPF cifrado, pseudonimização por HMAC-SHA256, prazo de retenção ligado ao estudo ativo), deixando explícito o que é real e o que é desenho futuro.
+Política de privacidade e termos de uso são páginas próprias, abertas sem login, e o cadastro exige a leitura dos dois antes de criar conta. A política descreve o dado de conta, o CPF cifrado com código HMAC-SHA256, os dados sensíveis em tabela separada e o prazo de retenção ligado ao estudo ativo. A eliminação dos dados ao encerrar o estudo (RF13) ainda não foi implementada.
 
 ## Stack
 
@@ -105,7 +117,7 @@ Em produção: Render para a aplicação e Neon para o banco.
 
 ## Como executar
 
-Requer Python 3.14 e Docker, usado apenas para o banco. O Django roda na máquina local.
+Requer Python 3.12 ou superior e Docker, usado apenas para o banco. O Django roda na máquina local.
 
 ```
 python -m venv .venv
@@ -178,16 +190,17 @@ Quando o envio falha, o Django registra o erro no log e ainda assim mostra a tel
 autenticacao/    usuário, formulários, views e rotas de acesso
 auditoria/       registro de eventos de acesso e de uso
 catalogo/        variáveis, domínios de valores e operadores de comparação
-estudos/         estudos e a tela de critérios de elegibilidade
+estudos/         estudos, tela de critérios de elegibilidade e dashboard do pesquisador
+voluntarios/     voluntário, participação, coleta, views SQL de verificação e classificação, pendências
 configuracao/    settings, urls do projeto e backend de email
 templates/       layouts e telas de cada app
 static/css/      folha de estilo sobre o Bootstrap
-static/js/       interação da tela de critérios
+static/js/       interação das telas de critérios e de coleta, e a cascata de estado e município
 ```
 
 O modelo de usuário é próprio, com email como identificador e nome completo obrigatório. O cadastro é aberto a quem tem email `@alunos.umc.br` e a pessoa escolhe o próprio perfil no formulário. A conta feita pelo próprio visitante nasce inativa e só passa a valer quando ele confirma o email, pelo link ou pelo código de 8 caracteres que a mensagem traz. O código vale 30 minutos e o link 3 dias. Cada envio gera os dois de novo e cancela os anteriores. A tabela `ConfirmacaoEmail` guarda só o hash de cada um, com o horário do envio e as contagens do limitador: 60 segundos entre pedidos, no máximo 5 envios por hora e 5 tentativas erradas por código, depois das quais é preciso pedir outro. O Brevo reescreve os links do email para medir cliques e não há opção por mensagem para desligar isso, por isso o código existe como segundo caminho. Quem tenta entrar antes de confirmar recebe o aviso e pode pedir o envio de novo na tela de login. Contas criadas pelo administrador ficam ativas na hora. O administrador pode corrigir o perfil de qualquer conta pelo admin ou pela tela de usuários.
 
-Cada conta tem um perfil, pesquisador ou profissional, e ele decide o que a pessoa alcança. O profissional chega ao registro de dados e à relação de pendências. O pesquisador chega aos estudos e aos critérios de cada um. Quem não tem o perfil recebe 403, mesmo digitando a URL direto, porque a verificação está no decorador `exige_perfil`, em `autenticacao/permissoes.py`, aplicado na view.
+Cada conta tem um perfil, pesquisador ou profissional, e ele decide o que a pessoa alcança. O profissional chega à identificação de voluntários, ao registro de dados e à relação de pendências. O pesquisador chega aos estudos e aos critérios de cada um. Quem não tem o perfil recebe 403, mesmo digitando a URL direto, porque a verificação está no decorador `exige_perfil`, em `autenticacao/permissoes.py`, aplicado na view.
 
 Entre pesquisadores, cada um enxerga apenas os próprios estudos. O estudo de outra pessoa responde 404, para não confirmar que ele existe.
 
@@ -204,5 +217,7 @@ Os testes rodam no PostgreSQL do container, que precisa estar no ar. O pytest cr
 Os testes cobrem a busca do catálogo (sinônimo, acento, erro de digitação, variáveis que ficam fora), a frase de cada tipo de critério e do resumo do estudo, a validação de critério incompleto e a tela de critérios de ponta a ponta: configuração, prévia, adicionar e remover. O controle de acesso tem testes próprios, que confirmam o 403 para o profissional, o 404 para o estudo de outra pesquisadora e o redirecionamento do visitante, em todas as rotas da tela.
 
 Também há testes para editar critério (tela preenchida por tipo, gravação, validação e acesso), para a confirmação de remoção e para o log das três ações. A simulação do navegador usada para conferir o script da tela não está automatizada.
+
+Cada critério de aceite de RF01 a RF09 tem um teste com o código no nome, por exemplo `test_RF06_CA02_...`, nos arquivos `teste_criterios_de_aceite.py` de cada app e em `estudos/teste_criterio_data.py`. Um deles, o `RF01_CA03` de direcionar à tela inicial, está marcado como `xfail` porque o código exige confirmar o email. A verificação de elegibilidade tem testes por operador, a classificação por caso da RN26, e a coleta por estado, por acesso e pela mensagem neutra de eliminação. Os dados dos testes são todos sintéticos, com CPFs que só passam na conta dos dígitos verificadores.
 
 Ainda sem testes: cadastro, login, confirmação de email, gestão de usuários e as telas de lista e edição de estudo. A avaliação de um participante contra os critérios depende do cadastro de voluntários, que não existe.
