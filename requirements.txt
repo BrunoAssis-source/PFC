@@ -4,3 +4,5 @@ requests>=2.32,<3.0
 pytest>=9.0,<10.0
 pytest-django>=4.9,<5.0
 cryptography>=43,<48
+gunicorn>=23.0,<24.0
+whitenoise>=6.9,<7.0
