@@ -43,6 +43,12 @@ ALLOWED_HOSTS = [h.strip() for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "").s
 if DEBUG and not ALLOWED_HOSTS:
     ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 
+CSRF_TRUSTED_ORIGINS = [
+    origem.strip()
+    for origem in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",")
+    if origem.strip()
+]
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
