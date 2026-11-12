@@ -1,0 +1,23 @@
+{% if variaveis %}
+    <ul class="arvore-lista">
+        {% for variavel in variaveis %}
+            <li>
+                <button type="button" class="variavel-botao" data-variavel="{{ variavel.id }}"
+                        {% if variavel.id in usadas_ids %}disabled aria-disabled="true"{% endif %}
+                        data-url="{% url 'estudos:configurar_criterio' estudo.id variavel.id %}"
+                        title="{{ variavel.definicao }}">
+                    <span class="variavel-texto">
+                        <span>{{ variavel.rotulo }}</span>
+                        <span class="variavel-caminho">{{ variavel.caminho }}</span>
+                    </span>
+                    <span class="variavel-tipo" data-tipo="{{ variavel.tipo_resumido }}">{% if variavel.id in usadas_ids %}em uso{% else %}{{ variavel.tipo_resumido }}{% endif %}</span>
+                </button>
+            </li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <div class="criterios-vazio">
+        <p>Nenhuma variável encontrada para <strong>{{ termo }}</strong>. Tente outro nome ou um sinônimo.</p>
+        <a class="painel-voltar" href="{% url 'estudos:propor_variavel' estudo.id %}?nome={{ termo|urlencode }}">Propor variável nova</a>
+    </div>
+{% endif %}

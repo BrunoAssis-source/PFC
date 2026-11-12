@@ -1,0 +1,14 @@
+{% extends "autenticacao/base_autenticacao.html" %}
+{% block title %}Confirmação de cadastro | UniData{% endblock %}
+{% block rotulo %}Novo acesso{% endblock %}
+{% block cabecalho %}{% if valido %}Email confirmado{% else %}Link inválido{% endif %}{% endblock %}
+{% block texto %}{% if valido %}Sua conta está ativa. Já é possível entrar com o seu email e a senha que você cadastrou.{% else %}Este link expirou ou não vale mais. Peça um novo para ativar a conta.{% endif %}{% endblock %}
+{% block corpo_cartao %}
+<div class="acesso-links">
+    {% if valido %}
+        <a href="{% url 'login' %}">Entrar</a>
+    {% else %}
+        <a href="{% url 'reenviar_confirmacao' %}">Pedir um link novo</a>
+    {% endif %}
+</div>
+{% endblock %}

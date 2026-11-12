@@ -8,8 +8,10 @@
         <span>UniData</span>
     </a>
     <div class="painel-usuario">
-        <span class="painel-iniciais">{{ user.iniciais }}</span>
-        <span class="painel-nome">{{ user.nome_completo }}</span>
+        <a class="painel-usuario-link" href="{% url 'meu_perfil' %}" title="Meus dados">
+            <span class="painel-iniciais">{{ user.iniciais }}</span>
+            <span class="painel-nome">{{ user.nome_completo }}</span>
+        </a>
         <form method="post" action="{% url 'logout' %}">
             {% csrf_token %}
             <button class="painel-sair" type="submit" title="Sair" aria-label="Sair">
@@ -32,13 +34,28 @@
                 <span>Estudos</span>
             </a>
         {% else %}
-            <a class="painel-item {% if rota == 'coleta' %}ativo{% endif %}" href="{% url 'coleta' %}">
+            <a class="painel-item {% if rota == 'coleta' and request.resolver_match.app_name != 'voluntarios' %}ativo{% endif %}" href="{% url 'coleta' %}">
                 {% include "icones/icone.html" with nome="registro" %}
                 <span>Registro</span>
+            </a>
+            <a class="painel-item {% if request.resolver_match.app_name == 'voluntarios' %}ativo{% endif %}" href="{% url 'voluntarios:identificar' %}">
+                {% include "icones/icone.html" with nome="usuarios" %}
+                <span>Voluntários</span>
             </a>
             <a class="painel-item {% if rota == 'pendencias' %}ativo{% endif %}" href="{% url 'pendencias' %}">
                 {% include "icones/icone.html" with nome="relogio" %}
                 <span>Pendências</span>
+            </a>
+        {% endif %}
+
+        {% if user.is_staff %}
+            <a class="painel-item {% if request.resolver_match.app_name == 'auditoria' %}ativo{% endif %}" href="{% url 'auditoria:listar' %}">
+                {% include "icones/icone.html" with nome="auditoria" %}
+                <span>Auditoria</span>
+            </a>
+            <a class="painel-item {% if rota == 'usuarios' or rota == 'editar_usuario' or rota == 'criar_usuario' or rota == 'trocar_senha_usuario' or rota == 'excluir_usuario' %}ativo{% endif %}" href="{% url 'usuarios' %}">
+                {% include "icones/icone.html" with nome="usuarios" %}
+                <span>Usuários</span>
             </a>
         {% endif %}
     </nav>

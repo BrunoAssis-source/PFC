@@ -204,6 +204,9 @@ def remover(apps, schema_editor):
 def criar_indice(apps, schema_editor):
     if schema_editor.connection.vendor != "postgresql":
         return
+    # A carga acima deixa verificações de chave estrangeira pendentes, e o
+    # PostgreSQL não cria índice na mesma transação enquanto elas existem.
+    schema_editor.execute("SET CONSTRAINTS ALL IMMEDIATE")
     for comando in CRIAR_INDICE:
         schema_editor.execute(comando)
 

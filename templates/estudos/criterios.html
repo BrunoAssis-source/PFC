@@ -1,0 +1,83 @@
+{% extends "painel.html" %}
+{% load static %}
+{% block title %}Critérios de elegibilidade | UniData{% endblock %}
+{% block content %}
+<p class="criterios-trilha">
+    <a href="{% url 'estudos:listar' %}">Estudos</a> ›
+    <a href="{% url 'estudos:detalhe' estudo.id %}">{{ estudo.nome }}</a> ›
+    Critérios de elegibilidade
+</p>
+<div class="painel-cabecalho">
+    <div>
+        <h1 class="painel-titulo">Critérios de elegibilidade</h1>
+        <p class="painel-abertura">Busque uma variável ou navegue pelo catálogo, defina a condição e adicione. A lista à direita mostra como o estudo vai ficar.</p>
+    </div>
+</div>
+
+<div class="criterios"
+     data-busca-url="{% url 'estudos:buscar_variaveis' estudo.id %}"
+     {% if configuracao_inicial %}data-configuracao-inicial="{{ configuracao_inicial }}"{% endif %}>
+
+    <section class="criterios-bloco" aria-label="Catálogo de variáveis">
+        <label class="form-label fw-semibold" for="busca-variavel">Buscar variável</label>
+        <input type="search" id="busca-variavel" class="criterios-busca" autocomplete="off"
+               placeholder="idade, renda, escolaridade..." aria-controls="resultados-busca"
+               {% if somente_leitura %}disabled{% endif %}>
+        <label class="form-label mt-2" for="filtro-subcategoria">Filtrar a busca por subcategoria</label>
+        <select id="filtro-subcategoria" class="form-select" {% if somente_leitura %}disabled{% endif %}>
+            <option value="">Todas as subcategorias</option>
+            {% for dominio in arvore %}{% for grupo in dominio.grupos %}
+                <option value="{{ grupo.subcategoria.id }}">{{ grupo.subcategoria.nome }}</option>
+            {% endfor %}{% endfor %}
+        </select>
+        <p class="criterios-ajuda">Aceita sinônimos: "grau de instrução", "bolsa família", "cidade"...</p>
+
+        <div id="resultados-busca" class="arvore" aria-live="polite" hidden></div>
+        <div id="arvore" class="arvore">
+            {% for dominio in arvore %}
+                <p class="arvore-dominio">{{ dominio.categoria.nome }}</p>
+                {% for grupo in dominio.grupos %}
+                    <details class="arvore-grupo" {% if grupo.subcategoria.id == grupo_inicial %}open{% endif %}>
+                        <summary>{{ grupo.subcategoria.nome }} <span class="arvore-total">{{ grupo.variaveis|length }}</span></summary>
+                        <ul class="arvore-lista">
+                            {% for variavel in grupo.variaveis %}
+                                <li>
+                                    <button type="button" class="variavel-botao" data-variavel="{{ variavel.id }}"
+                                            {% if somente_leitura or variavel.id in usadas_ids %}disabled aria-disabled="true"{% endif %}
+                                            {% if variavel.id == variavel_inicial %}aria-current="true"{% endif %}
+                                            data-url="{% url 'estudos:configurar_criterio' estudo.id variavel.id %}"
+                                            title="{{ variavel.definicao }}">
+                                        <span>{{ variavel.rotulo }}</span>
+                                        <span class="variavel-tipo" data-tipo="{{ variavel.tipo_resumido }}">{% if variavel.id in usadas_ids %}em uso{% else %}{{ variavel.tipo_resumido }}{% endif %}</span>
+                                    </button>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </details>
+                {% endfor %}
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="criterios-bloco" id="configuracao" aria-label="Configuração do critério" aria-live="polite">
+        {% if somente_leitura %}
+            <p class="config-inicial">Estudo encerrado: os critérios podem ser consultados, mas não alterados.</p>
+        {% else %}
+            <p class="config-inicial">Escolha uma variável no catálogo para definir a condição.</p>
+        {% endif %}
+    </section>
+
+    <aside class="criterios-bloco" id="regras" aria-label="Critérios do estudo" tabindex="-1">
+        {% include "estudos/_regras.html" %}
+    </aside>
+</div>
+
+<div class="painel-formulario-acoes">
+    <a class="painel-voltar" href="{% url 'estudos:detalhe' estudo.id %}">Voltar para o estudo</a>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'js/cascata.js' %}"></script>
+<script src="{% static 'js/criterios.js' %}"></script>
+{% endblock %}

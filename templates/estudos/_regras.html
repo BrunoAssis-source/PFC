@@ -1,0 +1,31 @@
+<h2>Critérios do estudo</h2>
+<span data-usadas="{{ usadas }}" hidden></span>
+
+<h3 class="regras-titulo inclusao">Inclusão · {{ inclusao|length }}</h3>
+{% if inclusao %}
+    <ul class="regras-lista">
+        {% for criterio in inclusao %}
+            {% include "estudos/_regra.html" %}
+        {% endfor %}
+    </ul>
+{% else %}
+    <p class="regras-vazio">Nenhum critério de inclusão.</p>
+{% endif %}
+
+<h3 class="regras-titulo exclusao">Exclusão · {{ exclusao|length }}</h3>
+{% if exclusao %}
+    <ul class="regras-lista">
+        {% for criterio in exclusao %}
+            {% include "estudos/_regra.html" %}
+        {% endfor %}
+    </ul>
+{% else %}
+    <p class="regras-vazio">Nenhum critério de exclusão.</p>
+{% endif %}
+
+{% if resumo %}
+    <div class="regras-resumo">
+        <p class="previa-rotulo">Resumo para o protocolo</p>
+        <p>{{ resumo }}</p>
+    </div>
+{% endif %}

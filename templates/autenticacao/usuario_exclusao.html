@@ -1,0 +1,40 @@
+{% extends "painel.html" %}
+{% block title %}Excluir usuário | UniData{% endblock %}
+{% block content %}
+<div class="painel-cabecalho">
+    <div>
+        <p class="painel-rotulo">Administração</p>
+        <h1 class="painel-titulo">Excluir usuário</h1>
+    </div>
+</div>
+
+<form class="painel-formulario" method="post">
+    {% csrf_token %}
+    <div class="alert alert-danger" role="alert">Esta ação não pode ser desfeita.</div>
+
+    <div class="painel-lista mb-4">
+        <div class="painel-linha">
+            <span class="painel-linha-icone" aria-hidden="true">
+                {% include "icones/icone.html" with nome="usuarios" tamanho=20 %}
+            </span>
+            <span class="painel-linha-texto">
+                <strong>{{ usuario.nome_completo }}</strong>
+                <span class="painel-linha-sub">{{ usuario.email }}</span>
+            </span>
+            <span class="painel-linha-contagem">{{ usuario.get_perfil_display|capfirst }}</span>
+        </div>
+    </div>
+
+    <h2 class="painel-secao-titulo mb-2">O que acontece</h2>
+    <ul class="exclusao-efeitos">
+        <li>A conta e o acesso ao sistema são removidos.</li>
+        <li>Os registros de auditoria dessa pessoa continuam, sem o vínculo com a conta.</li>
+        <li>Para apenas impedir o acesso, desative a conta na tela de edição.</li>
+    </ul>
+
+    <div class="painel-formulario-acoes">
+        <button class="painel-acao perigo" type="submit">Excluir definitivamente</button>
+        <a class="painel-voltar" href="{% url 'editar_usuario' usuario.id %}">Cancelar</a>
+    </div>
+</form>
+{% endblock %}

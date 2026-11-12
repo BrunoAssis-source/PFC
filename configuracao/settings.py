@@ -30,9 +30,24 @@ if not SECRET_KEY:
         "Use o .env.example como modelo."
     )
 
+# Duas chaves independentes: trocar a do HMAC invalida a busca por CPF, perder a de cifra torna os CPFs irrecuperáveis.
+CHAVE_HMAC = os.environ.get("CHAVE_HMAC", "")
+CHAVE_CIFRA = os.environ.get("CHAVE_CIFRA", "")
+if not CHAVE_HMAC or not CHAVE_CIFRA:
+    raise ImproperlyConfigured(
+        "Defina CHAVE_HMAC e CHAVE_CIFRA no arquivo .env ou no ambiente. "
+        "O README explica como gerar cada uma."
+    )
+
 ALLOWED_HOSTS = [h.strip() for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",") if h.strip()]
 if DEBUG and not ALLOWED_HOSTS:
     ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
+
+CSRF_TRUSTED_ORIGINS = [
+    origem.strip()
+    for origem in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",")
+    if origem.strip()
+]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -40,14 +55,18 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
+    "django.contrib.postgres",
     "django.contrib.staticfiles",
     "autenticacao",
     "estudos",
     "catalogo",
+    "auditoria",
+    "voluntarios",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -77,8 +96,14 @@ WSGI_APPLICATION = "configuracao.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.environ.get("DB_NAME", ""),
+        "USER": os.environ.get("DB_USER", ""),
+        "PASSWORD": os.environ.get("DB_PASSWORD", ""),
+        "HOST": os.environ.get("DB_HOST", "localhost"),
+        "PORT": os.environ.get("DB_PORT", "5432"),
+        # O Neon exige SSL. Local, sem a variável, o container não usa.
+        "OPTIONS": {"sslmode": os.environ.get("DB_SSLMODE", "prefer")},
     }
 }
 
@@ -96,6 +121,14 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+if not DEBUG:
+    # O Render termina o HTTPS no proxy e repassa HTTP à aplicação. Sem este
+    # cabeçalho o Django rejeita todo POST por origem diferente (CSRF).
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 AUTH_USER_MODEL = "autenticacao.Usuario"
@@ -106,12 +139,18 @@ LOGOUT_REDIRECT_URL = "login"
 # O Bootstrap usa "danger" onde o Django usa "error".
 MESSAGE_TAGS = {mensagens.ERROR: "danger"}
 
-EMAIL_BACKEND = "configuracao.email.BackendBrevo"
 DEFAULT_FROM_EMAIL = os.environ.get("EMAIL_REMETENTE", "UniData <noreply@alunos.umc.br>")
 
 BREVO_API_KEY = os.environ.get("BREVO_API_KEY", "")
-if not BREVO_API_KEY:
+if BREVO_API_KEY:
+    EMAIL_BACKEND = "configuracao.email.BackendBrevo"
+elif DEBUG:
+    # Sem chave no desenvolvimento a aplicação sobe mesmo assim, e o email
+    # aparece no terminal em vez de sair pela API. Serve para conferir o link
+    # de recuperação de senha sem precisar de conta no Brevo.
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+else:
     raise ImproperlyConfigured(
         "Defina BREVO_API_KEY no arquivo .env ou no ambiente. "
-        "O envio de email acontece apenas pela API do Brevo."
+        "Com DJANGO_DEBUG=0 o envio acontece apenas pela API do Brevo."
     )

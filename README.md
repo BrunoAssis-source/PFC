@@ -8,33 +8,108 @@ A classificação produzida pelo sistema é sugestão. A decisão sobre quem ent
 
 Projeto Final de Curso do Bacharelado em Sistemas de Informação da Universidade de Mogi das Cruzes.
 
-Autores: Bruno de Faria Assis e João Gabriel Dos Santos.
+Autor: Bruno de Faria Assis.
 
 ## Estado atual
 
-Estão implementados a autenticação com controle de acesso por perfil, o catálogo de variáveis e o cadastro de estudos e critérios.
+Estão implementados a autenticação com controle de acesso por perfil, o catálogo de variáveis, o cadastro de estudos e critérios, a identificação de voluntários por CPF, a coleta com verificação eliminatória, a tela de pendências do profissional, a classificação de elegibilidade no banco (RF10, sem a tela do pesquisador) e o dashboard do pesquisador na tela Início.
+
+Situação dos requisitos do documento:
+
+| Requisito | Situação |
+|---|---|
+| RF01 a RF03 (conta, login, redefinição de senha) | Implementados. No RF01 a conta só ativa depois de confirmar o email, e o documento prevê sessão iniciada no cadastro |
+| RF04 a RF07 (estudos e critérios) | Implementados |
+| RF08 (identificar voluntário) | Implementado, com a conferência do TCLE antes da coleta, que o documento não prevê |
+| RF09 (coleta com verificação eliminatória) | Implementado |
+| RF10 (classificação) | Só a view SQL, sem a tela do pesquisador |
+| RF11 (pendências) | Implementado |
+| RF12 a RF14 (decisão do pesquisador, eliminação de dados, auditoria completa) | RF14 parcial, os outros ainda não existem |
 
 A autenticação cobre o cadastro restrito ao domínio `@alunos.umc.br`, login, recuperação de senha por email e a separação entre pesquisador e profissional, com as rotas de cada um negando acesso a quem não tem o perfil.
 
-O pesquisador cadastra e edita estudos, cada um com situação de rascunho, ativo ou encerrado. Em cada estudo ele inclui e remove critérios de elegibilidade. Todo critério parte de uma variável do catálogo, que o pesquisador encontra descendo por categoria e subcategoria ou buscando pelo nome. Se a busca não acha a variável, ele pode propor uma nova, que entra no catálogo e fica disponível para qualquer estudo. O catálogo já vem carregado com as variáveis do perfil sociodemográfico.
+O pesquisador cadastra e edita estudos, cada um com situação de rascunho, ativo ou encerrado. Os critérios de elegibilidade ficam numa tela só, com três colunas: o catálogo de variáveis à esquerda, a condição do critério ao centro e a lista do estudo à direita. O catálogo aparece em árvore (domínio, grupo, variável) ou, com a busca preenchida, como lista de resultados. A busca aceita sinônimos ("grau de instrução" acha Escolaridade), ignora acento e caixa e tolera erro de digitação, tudo no PostgreSQL, com as extensões `unaccent` e `pg_trgm`. Se nada é encontrado, o pesquisador pode propor uma variável nova, que entra no catálogo e fica disponível para qualquer estudo.
 
-Os operadores oferecidos dependem do tipo da variável:
+Cada critério é de inclusão ou de exclusão, e a condição muda conforme o tipo da variável:
 
-| Tipo | Operadores |
+| Tipo | Como o pesquisador define a condição |
 |---|---|
-| Numérica | =, ≠, <, ≤, >, ≥, entre |
-| Categórica nominal | é, não é, está em, não está em |
-| Categórica ordinal | os da nominal, mais ≤, ≥ e entre, pela ordem das opções |
-| Booleana | é verdadeiro, é falso |
-| Data | antes de, depois de, entre |
+| Numérica | entre (dois valores), pelo menos, no máximo ou exatamente, com a unidade ao lado |
+| Categórica nominal | caixas de seleção com as opções cadastradas, com botões para marcar todas e limpar |
+| Categórica ordinal | a partir de, até ou exatamente, mais a escolha de um nível da lista ordenada |
+| Booleana | sim ou não |
 
-Variável de texto livre não serve de critério e não aparece no seletor. Um critério de data pode ser escrito com dia, só com mês e ano ou só com o ano, e é exibido do mesmo jeito que foi informado.
+Uma caixa "Como vai ficar" mostra a frase do critério enquanto ele é montado, por exemplo "Incluir participantes com idade entre 18 e 65 anos." O botão de adicionar só habilita quando a condição está completa, e o aviso diz o que falta. A frase e a validação vêm do servidor, do mesmo formulário que grava o critério, para existirem num lugar só. À direita, o resumo reúne tudo em texto corrido. A idade é uma variável só, em anos, e a faixa etária fica fora da tela porque só existe para derivar a idade. A data de nascimento aparece no seletor, com os operadores antes de, depois de e entre. O pesquisador escolhe a precisão (dia, mês e ano ou apenas o ano) e informa ano, mês e dia conforme ela. "Antes de" grava o primeiro dia do período e "depois de" o último, então "depois de 1990" grava 31/12/1990 e aparece como "Data de nascimento depois de 1990". No "entre", o início é o primeiro dia do primeiro período e o fim é o último dia do segundo.
 
-Faltam o cadastro de voluntários, os valores coletados e a verificação de elegibilidade. Por isso as telas do profissional, registro de dados e pendências, existem ainda sem conteúdo. O banco em uso durante o desenvolvimento é SQLite; a migração para PostgreSQL está prevista.
+Município de residência é escolhido em cascata: primeiro o estado, depois os municípios dele, com filtro pelo nome. A seleção atravessa estados, então um mesmo critério pode juntar cidades de lugares diferentes. A lista é a oficial do IBGE (27 estados e 5.571 municípios, consultada em novembro de 2026) e está em `catalogo/dados/`, carregada por migration como dado fixo do sistema. Em funcionamento a aplicação não consulta nenhuma API externa, e para atualizar a lista basta gerar os dois arquivos de novo a partir da API de localidades do IBGE e criar uma migration.
+
+Estudo encerrado não aceita incluir, alterar nem remover critério. A tela abre só para consulta, sem os botões, e o servidor recusa as rotas de alteração com acesso negado. Cada regra da lista à direita tem Editar e Remover. Editar abre o critério na coluna do meio com os valores atuais, e a variável fica fixa: para usar outra, remove-se o critério e adiciona-se um novo. Tudo o mais pode mudar, como incluir ou excluir, a condição e os valores. Remover pede confirmação na própria linha, com "Sim, remover" e "Não", e o Esc desiste.
+
+A tela recusa o critério que não restringe ninguém. Numa lista de opções, marcar todas dá o aviso "Esse critério inclui todos os participantes" (ou "exclui", quando a regra é de exclusão). Numa escala de níveis, vale o mesmo para "a partir do nível mais baixo" e "até o nível mais alto". Os avisos aparecem na prévia, que desabilita o botão, e o servidor repete a checagem.
+
+Algumas variáveis sim ou não têm texto próprio para cada resposta, para a frase sair natural. Pessoa com deficiência produz "com deficiência" e "sem deficiência", em vez de "pessoa com deficiência: sim". A prévia vai por POST, com o formulário inteiro no corpo, porque uma lista grande de municípios não cabe no endereço da requisição.
+
+Cada variável aparece em um só critério do estudo. Na árvore e na busca, a variável já usada fica indisponível, marcada como "em uso", e o servidor recusa o cadastro de uma segunda vez. Para limitar a idade dos dois lados, o critério usa "entre". Variável de texto livre não serve de critério.
+
+O profissional identifica o voluntário em `/voluntarios/`, pelo CPF e só por ele, sem nome nem contato. O sistema valida os dígitos, calcula o código HMAC-SHA256 e procura por esse código. Se o voluntário existe, a tela abre o cadastro dele. Se não existe, oferece cadastrar. O CPF é gravado cifrado (Fernet) ao lado do código, que tem restrição de unicidade no banco, então o mesmo CPF não gera dois voluntários nem quando dois profissionais cadastram ao mesmo tempo. Na tela o CPF aparece mascarado (`***.982.247-**`) e só os 11 dígitos digitados na busca passam pelo servidor.
+
+O voluntário é vinculado a um estudo ativo com o aceite do TCLE. O profissional marca que conferiu o documento físico assinado, e o sistema grava a versão do termo, a data e quem registrou. Sem a marcação não há participação, e o mesmo voluntário não entra duas vezes no mesmo estudo. Qualquer profissional pode vincular voluntário a qualquer estudo ativo.
+
+A auditoria registra busca, cadastro, tentativa de cadastro repetido, leitura da ficha e vínculo com TCLE. O objeto do registro leva só os oito primeiros caracteres do código, nunca o CPF.
+
+Na ficha do voluntário, o botão Coletar dados abre a coleta da participação, uma variável por tela. As variáveis perguntadas são as dos critérios do estudo, com as não sensíveis primeiro e as sensíveis por último, para quem seria eliminado nunca responder uma pergunta sensível. Variável derivada não é perguntada. Idade, faixa etária e renda per capita saem das origens (data de nascimento, renda familiar e pessoas no domicílio) a cada consulta, então a idade acompanha o calendário e nada disso fica gravado.
+
+Nada é gravado até todos os critérios serem atendidos. Cada resposta é conferida com as anteriores dentro de uma transação que o sistema sempre desfaz, a não ser na última resposta. A conferência é feita no banco, pela view `voluntarios_avaliacao_criterio`, que compara os valores com os critérios do estudo nos 15 operadores. Inclusão exige atender e exclusão exige não atender. Enquanto a coleta está em andamento, as respostas já aceitas ficam só na sessão do profissional. Se um critério reprova, a coleta acaba, a sessão é limpa e nenhum valor é gravado, nem os das respostas anteriores. A participação passa a `eliminada` e guarda o critério reprovado. Quando a última resposta passa, todos os valores são gravados de uma vez, a participação passa a `concluida` e o pesquisador do estudo recebe um email. O email leva só o nome do estudo e o código curto do voluntário, sem CPF e sem valores, e uma falha no envio fica no log sem desfazer a coleta.
+
+Enquanto a coleta não termina, as respostas ficam na sessão do servidor (tabela de sessões do Django) e saem de lá ao concluir, ao eliminar ou quando a sessão expira. Uma coleta abandonada deixa as respostas na sessão até ela expirar.
+
+O profissional não vê o resultado da verificação. A tela de eliminação diz apenas "Coleta encerrada: este voluntário não é compatível com o estudo.", igual para qualquer critério e para variável comum ou sensível, e a ficha mostra a participação como encerrada. Os testes comparam o conteúdo da tela, o redirecionamento e o número de consultas entre os casos. O critério que eliminou aparece só para o pesquisador, na tela do estudo, junto do código curto do voluntário.
+
+O município é escolhido na mesma cascata da tela de critérios, estado primeiro e depois o município com filtro por nome, mas com escolha de um só. O componente é compartilhado (`static/js/cascata.js` e `templates/estudos/_cascata.html`).
+
+Os valores coletados ficam em linhas (voluntário, variável, valor, fonte, data), ligados ao voluntário só pelo código HMAC. Valor novo da mesma variável é linha nova, e a verificação usa a mais recente.
+
+Variável marcada como sensível (identidade de gênero, orientação sexual, pessoa com deficiência e raça ou cor) vai para a tabela `ValorSensivel`, com a mesma estrutura e sem cifra de coluna. A decisão tem quatro razões. O domínio de cada variável é uma lista fechada, então cifrar o valor esconderia pouco. A verificação e o reaproveitamento entre estudos comparam valores no banco, o que a cifra impediria. A tabela separada isola esses dados do restante. E o acesso é auditado, com o banco cifrado em repouso pelo provedor. A auditoria registra cada resposta a variável sensível, com o código da variável e o código curto do voluntário, nunca o valor.
+
+A classificação do RF10 existe no banco como view, `voluntarios_classificacao`, para cada par de voluntário e estudo ativo. Elegível atende a todos os critérios, inelegível deixa de atender a pelo menos um (mesmo faltando outros valores, ou com a coleta encerrada por critério) e pendente não reprova em nenhum, mas falta valor para algum. Ela reaproveita a verificação dos 15 operadores e as derivadas da coleta, e só considera valores dentro da vida útil da variável: o valor vencido conta como ausente. A view `voluntarios_faltantes` lista as variáveis que faltam em cada par, com a derivada trocada pelas origens. Ainda falta a tela do pesquisador e o registro da decisão (RF12).
+
+A tela de pendências do profissional lista os voluntários que já têm dados na base e estão pendentes em algum estudo ativo, pelo código curto e só com as variáveis que faltam coletar. Não mostra critério, valor de critério nem classificação. Cada linha tem a conferência do TCLE e o botão Coletar, que abre a mesma coleta em passos pedindo apenas o que falta, com as mesmas regras: sensíveis por último, nada gravado até o fim e a mensagem neutra quando reprova. Concluída a coleta, o voluntário sai da lista. A consulta às pendências e o início da coleta dos faltantes entram na auditoria, sem dados pessoais.
+
+Quando surge uma pendência nova, o profissional que cadastrou o voluntário recebe um email com o estudo e o código curto, sem CPF, valores nem critérios. A pendência já avisada fica registrada para o aviso não se repetir, e sai do registro quando deixa de ser pendente. O aviso é disparado ao incluir, alterar ou remover critério, ao editar o estudo e ao concluir uma coleta. Falha no envio vai para o log e não interrompe a operação.
+
+O app `auditoria` registra login com sucesso e com falha, logout, criação de conta, redefinição de senha, negação de acesso por perfil insuficiente e leitura ou edição de estudo, e também adição, edição e remoção de critério. Cada registro grava usuário, ação, IP e data. A tela fica em `/auditoria/`, aberta a quem tem `is_staff`, do jeito que o Django admin já reconhece como administrador, sem depender do perfil de pesquisador ou profissional. Pelo admin do Django o mesmo registro aparece sem opção de editar nem excluir. O texto do objeto não tem limite de tamanho, porque na edição de critério o registro guarda a frase antes e depois, e uma lista de municípios passa de 150 caracteres. Se a edição não muda a frase, nada é registrado.
+
+A leitura de valor sensível por outra tela, como a do pesquisador, ainda não existe. Quando existir, deve entrar na auditoria como a gravação já entra.
+
+### Trabalho futuro na coleta
+
+- Pendência por vencimento. O aviso por email não dispara quando um valor vence pela vida útil, porque não há tarefa agendada que reavalie as pendências. Hoje a lista de pendências já mostra o valor vencido como faltante, mas o email só sai nos eventos listados acima.
+- Profissional que recebe o aviso. O aviso vai ao profissional que cadastrou o voluntário. O documento não define quem recebe, e vale decidir se deve ir a todos os profissionais.
+
+- Retomada de participação interrompida. A situação `interrompida` existe, mas nenhuma tela a aplica. Hoje a coleta em andamento continua de onde parou enquanto a sessão do profissional vale, e recomeça do primeiro campo se a sessão expira.
+- Fluxo de fonte confirmada. A fonte é gravada em cada resposta, mas nada ainda distingue fonte confirmada de informada pelo voluntário. O estado pendente dos estudos auxiliares depende disso.
+- Variáveis exigidas além dos critérios. O estudo só pergunta as variáveis que aparecem em critérios.
+
+### Trabalho futuro na identificação de voluntários
+
+- Revogação do TCLE. A situação `revogada` existe na participação, mas nenhuma tela a aplica. Falta decidir o que acontece com os dados já coletados.
+- Designação de profissional por estudo. Hoje qualquer profissional vincula voluntário a qualquer estudo ativo.
+- Texto do TCLE no sistema. A versão é uma constante em `voluntarios/models.py`, e o termo em si fica no documento físico do comitê de ética.
+- Rotação das chaves. Trocar `CHAVE_HMAC` ou `CHAVE_CIFRA` exige recalcular os registros existentes, e não há comando para isso.
+
+### Trabalho futuro nos critérios
+
+Ficaram de fora, por decisão de escopo, estes itens.
+
+- Motivo da alteração. Em estudo ativo, pedir ao pesquisador a razão da mudança e gravá-la no registro de auditoria.
+- Travamento por triagem iniciada. O critério de um estudo com voluntários já triados não deveria mudar, e alterar passaria a exigir uma nova versão do estudo. Hoje a participação guarda o critério reprovado, mas editar o critério continua livre em estudo ativo.
+- Histórico e desfazer. A remoção apaga o critério de verdade, e só o registro de auditoria guarda a frase. Manter os critérios removidos ou alterados como versões permitiria consultar o estudo como ele estava em uma data e desfazer uma remoção.
+
+Política de privacidade e termos de uso são páginas próprias, abertas sem login, e o cadastro exige a leitura dos dois antes de criar conta. A política descreve o dado de conta, o CPF cifrado com código HMAC-SHA256, os dados sensíveis em tabela separada e o prazo de retenção ligado ao estudo ativo. A eliminação dos dados ao encerrar o estudo (RF13) ainda não foi implementada.
 
 ## Stack
 
-Django 5.2 no padrão MVT, PostgreSQL (SQLite por enquanto, no desenvolvimento), Bootstrap 5 e pytest. Aplicação monolítica, sem API própria, porque o único cliente é o navegador.
+Django 5.2 no padrão MVT, PostgreSQL, Bootstrap 5 e pytest. Aplicação monolítica, sem API própria, porque o único cliente é o navegador.
 
 O envio de email usa a API transacional do Brevo, com requisição HTTP direta em um backend de email do Django.
 
@@ -42,24 +117,27 @@ Em produção: Render para a aplicação e Neon para o banco.
 
 ## Como executar
 
-Requer Python 3.14.
+Requer Python 3.12 ou superior e Docker, usado apenas para o banco. O Django roda na máquina local.
 
 ```
 python -m venv .venv
 .venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-Copie o `.env.example` para `.env` e preencha as variáveis descritas abaixo. Depois:
+Copie o `.env.example` para `.env` e preencha as variáveis descritas abaixo, inclusive `DB_PASSWORD`. Depois:
 
 ```
+docker compose up -d
 .venv\Scripts\python.exe manage.py migrate
 .venv\Scripts\python.exe manage.py createsuperuser
 .venv\Scripts\python.exe manage.py runserver
 ```
 
+O `docker compose up -d` sobe o PostgreSQL 16 com um volume nomeado, então os dados sobrevivem a `docker compose down`. O `migrate` já carrega o catálogo de variáveis e ativa as extensões `unaccent` e `pg_trgm`, usadas na busca de critérios. Se a porta 5432 já estiver ocupada por outro PostgreSQL na máquina, troque `DB_PORT` no `.env` (por exemplo para 5433) antes de subir o container.
+
 O `createsuperuser` pede email antes do nome, porque o email é o campo de identificação do usuário no lugar do nome de acesso padrão do Django.
 
-A aplicação responde em http://127.0.0.1:8000. A raiz é a tela de login, e o admin do Django fica em `/admin/`. A política de privacidade, em `/politica-de-privacidade/`, abre sem login.
+A aplicação responde em http://127.0.0.1:8000. A raiz é a tela de login, e o admin do Django fica em `/admin/`. Política de privacidade (`/politica-de-privacidade/`) e termos de uso (`/termos-de-uso/`) abrem sem login.
 
 ## Variáveis de ambiente
 
@@ -70,7 +148,9 @@ Ficam no arquivo `.env`, na raiz, que não é versionado. O `settings.py` lê es
 | `DJANGO_SECRET_KEY` | Obrigatória. Veja abaixo como gerar |
 | `DJANGO_DEBUG` | `1` no desenvolvimento, `0` em produção |
 | `DJANGO_ALLOWED_HOSTS` | Domínios separados por vírgula. Obrigatória quando `DJANGO_DEBUG=0` |
-| `BREVO_API_KEY` | Obrigatória. Chave da API transacional do Brevo |
+| `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT` | Conexão com o PostgreSQL. O `docker-compose.yml` cria o banco com os mesmos valores |
+| `CHAVE_HMAC`, `CHAVE_CIFRA` | Obrigatórias. Veja abaixo como gerar |
+| `BREVO_API_KEY` | Chave da API transacional do Brevo. Obrigatória apenas quando `DJANGO_DEBUG=0` |
 | `EMAIL_REMETENTE` | Remetente das mensagens, no formato `Nome <endereco@dominio>` |
 
 Para gerar a chave secreta:
@@ -79,11 +159,20 @@ Para gerar a chave secreta:
 .venv\Scripts\python.exe -c "from django.core.management.utils import get_random_secret_key as g; print(g())"
 ```
 
-A aplicação não sobe sem `DJANGO_SECRET_KEY` e `BREVO_API_KEY`. A falha aparece como `ImproperlyConfigured` já no `manage.py check`, com a instrução do que preencher.
+As duas chaves do CPF são independentes. `CHAVE_HMAC` gera o código de busca e `CHAVE_CIFRA` cifra o CPF. Gere cada uma uma vez, só no ambiente em que vai usar:
+
+```
+.venv\Scripts\python.exe -c "import secrets; print(secrets.token_urlsafe(48))"
+.venv\Scripts\python.exe -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+
+O primeiro comando serve para `CHAVE_HMAC` e o segundo para `CHAVE_CIFRA`. Guarde as duas fora do repositório, num gerenciador de senhas. Perder a `CHAVE_CIFRA` torna os CPFs cifrados irrecuperáveis, e trocar a `CHAVE_HMAC` faz a busca deixar de achar os voluntários já cadastrados. Cada ambiente tem as suas, então um banco não abre com a chave de outro.
+
+A aplicação não sobe sem `DJANGO_SECRET_KEY`, `CHAVE_HMAC` e `CHAVE_CIFRA`. A falha aparece como `ImproperlyConfigured` já no `manage.py check`, com a instrução do que preencher. `BREVO_API_KEY` só é exigida com `DJANGO_DEBUG=0`; no desenvolvimento, deixá-la vazia manda o email para o terminal.
 
 ## Email
 
-O envio acontece apenas pela API do Brevo, em `configuracao/email.py`. Cada mensagem vira um `POST` para `https://api.brevo.com/v3/smtp/email`, com a chave no cabeçalho `api-key` e o destinatário definido no momento do envio, sem lista de contatos.
+Em produção o envio acontece apenas pela API do Brevo, em `configuracao/email.py`. No desenvolvimento sem `BREVO_API_KEY` o Django usa o backend de console e escreve a mensagem inteira no terminal, o que basta para conferir o link de recuperação de senha. Cada mensagem vira um `POST` para `https://api.brevo.com/v3/smtp/email`, com a chave no cabeçalho `api-key` e o destinatário definido no momento do envio, sem lista de contatos.
 
 Escrito como backend de email do Django, o que mantém as views usando `send_mail` normalmente. A mensagem de recuperação de senha tem versão em texto e versão em HTML, e a segunda é a que vai no `htmlContent`.
 
@@ -99,17 +188,19 @@ Quando o envio falha, o Django registra o erro no log e ainda assim mostra a tel
 
 ```
 autenticacao/    usuário, formulários, views e rotas de acesso
+auditoria/       registro de eventos de acesso e de uso
 catalogo/        variáveis, domínios de valores e operadores de comparação
-estudos/         estudos, critérios e seletor de variáveis
+estudos/         estudos, tela de critérios de elegibilidade e dashboard do pesquisador
+voluntarios/     voluntário, participação, coleta, views SQL de verificação e classificação, pendências
 configuracao/    settings, urls do projeto e backend de email
 templates/       layouts e telas de cada app
 static/css/      folha de estilo sobre o Bootstrap
-static/js/       seletor de variáveis e campos do formulário de critério
+static/js/       interação das telas de critérios e de coleta, e a cascata de estado e município
 ```
 
-O modelo de usuário é próprio, com email como identificador e nome completo obrigatório. O cadastro é aberto a quem tem email `@alunos.umc.br` e a pessoa escolhe o próprio perfil no formulário. O administrador pode corrigir o perfil de qualquer conta pelo admin.
+O modelo de usuário é próprio, com email como identificador e nome completo obrigatório. O cadastro é aberto a quem tem email `@alunos.umc.br` e a pessoa escolhe o próprio perfil no formulário. A conta feita pelo próprio visitante nasce inativa e só passa a valer quando ele confirma o email, pelo link ou pelo código de 8 caracteres que a mensagem traz. O código vale 30 minutos e o link 3 dias. Cada envio gera os dois de novo e cancela os anteriores. A tabela `ConfirmacaoEmail` guarda só o hash de cada um, com o horário do envio e as contagens do limitador: 60 segundos entre pedidos, no máximo 5 envios por hora e 5 tentativas erradas por código, depois das quais é preciso pedir outro. O Brevo reescreve os links do email para medir cliques e não há opção por mensagem para desligar isso, por isso o código existe como segundo caminho. Quem tenta entrar antes de confirmar recebe o aviso e pode pedir o envio de novo na tela de login. Contas criadas pelo administrador ficam ativas na hora. O administrador pode corrigir o perfil de qualquer conta pelo admin ou pela tela de usuários.
 
-Cada conta tem um perfil, pesquisador ou profissional, e ele decide o que a pessoa alcança. O profissional chega ao registro de dados e à relação de pendências. O pesquisador chega aos estudos e aos critérios de cada um. Quem não tem o perfil recebe 403, mesmo digitando a URL direto, porque a verificação está no decorador `exige_perfil`, em `autenticacao/permissoes.py`, aplicado na view.
+Cada conta tem um perfil, pesquisador ou profissional, e ele decide o que a pessoa alcança. O profissional chega à identificação de voluntários, ao registro de dados e à relação de pendências. O pesquisador chega aos estudos e aos critérios de cada um. Quem não tem o perfil recebe 403, mesmo digitando a URL direto, porque a verificação está no decorador `exige_perfil`, em `autenticacao/permissoes.py`, aplicado na view.
 
 Entre pesquisadores, cada um enxerga apenas os próprios estudos. O estudo de outra pessoa responde 404, para não confirmar que ele existe.
 
@@ -121,4 +212,12 @@ pytest, com os testes em arquivos `teste_*.py`.
 .venv\Scripts\python.exe -m pytest
 ```
 
-Os testes atuais, todos em `estudos/teste_seletor_variavel.py`, cobrem a navegação e a busca no seletor de variáveis, a gravação de critérios de data em cada precisão (incluindo a recusa de data que não existe no calendário) e a negativa de acesso ao seletor, tanto para o profissional quanto para o pesquisador que não é dono do estudo. Cadastro, login e as demais telas de estudo ainda estão sem testes.
+Os testes rodam no PostgreSQL do container, que precisa estar no ar. O pytest cria e descarta um banco de teste à parte, sem tocar nos dados de desenvolvimento.
+
+Os testes cobrem a busca do catálogo (sinônimo, acento, erro de digitação, variáveis que ficam fora), a frase de cada tipo de critério e do resumo do estudo, a validação de critério incompleto e a tela de critérios de ponta a ponta: configuração, prévia, adicionar e remover. O controle de acesso tem testes próprios, que confirmam o 403 para o profissional, o 404 para o estudo de outra pesquisadora e o redirecionamento do visitante, em todas as rotas da tela.
+
+Também há testes para editar critério (tela preenchida por tipo, gravação, validação e acesso), para a confirmação de remoção e para o log das três ações. A simulação do navegador usada para conferir o script da tela não está automatizada.
+
+Cada critério de aceite de RF01 a RF09 tem um teste com o código no nome, por exemplo `test_RF06_CA02_...`, nos arquivos `teste_criterios_de_aceite.py` de cada app e em `estudos/teste_criterio_data.py`. Um deles, o `RF01_CA03` de direcionar à tela inicial, está marcado como `xfail` porque o código exige confirmar o email. A verificação de elegibilidade tem testes por operador, a classificação por caso da RN26, e a coleta por estado, por acesso e pela mensagem neutra de eliminação. Os dados dos testes são todos sintéticos, com CPFs que só passam na conta dos dígitos verificadores.
+
+Ainda sem testes: cadastro, login, confirmação de email, gestão de usuários e as telas de lista e edição de estudo. A avaliação de um participante contra os critérios depende do cadastro de voluntários, que não existe.

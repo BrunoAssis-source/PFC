@@ -1,4 +1,5 @@
 import unicodedata
+from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -7,6 +8,16 @@ from django.db import models
 def normalizar(texto):
     sem_acento = unicodedata.normalize("NFKD", texto or "")
     return "".join(c for c in sem_acento if not unicodedata.combining(c)).lower()
+
+
+def formatar_numero(valor, casas=None):
+    """Número no padrão brasileiro: ponto nos milhares e vírgula nos decimais."""
+    valor = Decimal(str(valor))
+    if casas is None:
+        texto = format(valor.normalize(), ",f")
+    else:
+        texto = format(valor.quantize(Decimal(1).scaleb(-casas)), ",f")
+    return texto.translate(str.maketrans(",.", ".,"))
 
 
 class Categoria(models.Model):
@@ -45,6 +56,12 @@ class Dominio(models.Model):
     codigo = models.SlugField("código", max_length=40, unique=True)
     nome = models.CharField("nome", max_length=80)
     ordinal = models.BooleanField("ordinal", default=False)
+    # Município tem o Estado como domínio superior: o pesquisador escolhe o
+    # estado primeiro e depois os municípios dele.
+    superior = models.ForeignKey(
+        "self", on_delete=models.PROTECT, null=True, blank=True, related_name="subordinados",
+        verbose_name="domínio superior",
+    )
 
     class Meta:
         verbose_name = "domínio"
@@ -61,6 +78,10 @@ class OpcaoDominio(models.Model):
     rotulo = models.CharField("rótulo", max_length=120)
     # Sequência usada pela comparação ordinal.
     ordem = models.PositiveSmallIntegerField("ordem", default=0)
+    pai = models.ForeignKey(
+        "self", on_delete=models.PROTECT, null=True, blank=True, related_name="filhas",
+        verbose_name="opção superior",
+    )
 
     class Meta:
         verbose_name = "opção de domínio"
@@ -120,9 +141,16 @@ class Variavel(models.Model):
     subcategoria = models.ForeignKey(Subcategoria, on_delete=models.PROTECT, related_name="variaveis")
     codigo = models.SlugField("código", max_length=60, unique=True)
     nome = models.CharField("nome", max_length=120)
+    # Rótulo que cabe na tela de critérios, onde o nome completo ficaria longo.
+    nome_curto = models.CharField("nome curto", max_length=60, blank=True)
     tipo = models.CharField("tipo", max_length=10, choices=Tipo.choices)
 
     definicao = models.CharField("definição", max_length=220, blank=True)
+
+    # Só para variável sim ou não cujo nome não cabe em "com <nome>: sim", como
+    # "com deficiência" e "sem deficiência". Vazios usam a frase padrão.
+    texto_sim = models.CharField("texto da resposta sim", max_length=80, blank=True)
+    texto_nao = models.CharField("texto da resposta não", max_length=80, blank=True)
 
     unidade = models.CharField("unidade canônica", max_length=30, blank=True)
     minimo = models.DecimalField("mínimo plausível", max_digits=12, decimal_places=2, null=True, blank=True)
@@ -153,6 +181,37 @@ class Variavel(models.Model):
     def __str__(self):
         return self.nome
 
+    @property
+    def caminho(self):
+        return f"{self.subcategoria.categoria.nome} › {self.subcategoria.nome}"
+
+    @property
+    def tipo_resumido(self):
+        return {
+            self.Tipo.NUMERICA: "valor",
+            self.Tipo.NOMINAL: "opções",
+            self.Tipo.ORDINAL: "níveis",
+            self.Tipo.BOOLEANA: "sim ou não",
+            self.Tipo.DATA: "data",
+        }.get(self.tipo, self.get_tipo_display())
+
+    @property
+    def em_reais(self):
+        return self.unidade == "reais"
+
+    @property
+    def faixa(self):
+        if self.minimo is None or self.maximo is None:
+            return ""
+        if self.em_reais:
+            return f"de R$ {formatar_numero(self.minimo)} a R$ {formatar_numero(self.maximo)}"
+        unidade = f" {self.unidade}" if self.unidade else ""
+        return f"de {formatar_numero(self.minimo)} a {formatar_numero(self.maximo)}{unidade}"
+
+    @property
+    def rotulo(self):
+        return self.nome_curto or self.nome
+
     def save(self, *args, **kwargs):
         self.busca = self.texto_de_busca(self.nome, self.codigo)
         super().save(*args, **kwargs)
@@ -182,3 +241,19 @@ class Variavel(models.Model):
 
         if self.tipo == self.Tipo.ORDINAL and self.dominio_id and not self.dominio.ordinal:
             raise ValidationError({"dominio": "Variável ordinal exige domínio marcado como ordinal."})
+
+
+class SinonimoVariavel(models.Model):
+    variavel = models.ForeignKey(Variavel, on_delete=models.CASCADE, related_name="sinonimos")
+    termo = models.CharField("termo", max_length=80)
+
+    class Meta:
+        verbose_name = "sinônimo"
+        verbose_name_plural = "sinônimos"
+        ordering = ["variavel", "termo"]
+        constraints = [
+            models.UniqueConstraint(fields=["variavel", "termo"], name="sinonimo_unico_por_variavel"),
+        ]
+
+    def __str__(self):
+        return self.termo

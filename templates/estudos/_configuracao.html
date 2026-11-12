@@ -1,0 +1,133 @@
+<form id="form-criterio" method="post"
+      action="{% if criterio %}{% url 'estudos:editar_criterio' estudo.id criterio.id %}{% else %}{% url 'estudos:adicionar_criterio' estudo.id variavel.id %}{% endif %}"
+      data-previa-url="{% url 'estudos:previa_criterio' estudo.id variavel.id %}"
+      {% if criterio %}data-modo="edicao"{% endif %}>
+    {% csrf_token %}
+    <p class="config-caminho">{{ variavel.caminho }}</p>
+    <h2 class="config-titulo">{{ variavel.rotulo }}</h2>
+    <p class="config-tipo">
+        Tipo: {{ variavel.tipo_resumido }}{% if variavel.faixa %}, {{ variavel.faixa }}{% endif %}.
+        {% if variavel.definicao %}{{ variavel.definicao }}{% endif %}
+    </p>
+    {% if criterio %}
+        <p class="config-edicao">Você está editando um critério do estudo. A variável não muda: para usar outra, remova este critério e adicione um novo.</p>
+    {% endif %}
+
+    <fieldset class="config-grupo">
+        <legend>Este critério serve para</legend>
+        <div class="escolhas">
+            <label class="escolha"><input type="radio" name="tipo_regra" value="inclusao" {% if not criterio or criterio.tipo_regra == "inclusao" %}checked{% endif %}><span>Incluir quem atende</span></label>
+            <label class="escolha"><input type="radio" name="tipo_regra" value="exclusao" {% if criterio.tipo_regra == "exclusao" %}checked{% endif %}><span>Excluir quem atende</span></label>
+        </div>
+    </fieldset>
+
+    {% if variavel.tipo == "numerica" %}
+        <fieldset class="config-grupo">
+            <legend>Condição</legend>
+            <div class="escolhas">
+                {% for valor, rotulo in form.fields.operador.choices %}
+                    <label class="escolha"><input type="radio" name="operador" value="{{ valor }}" {% if criterio %}{% if valor == criterio.operador %}checked{% endif %}{% elif forloop.first %}checked{% endif %}><span>{{ rotulo }}</span></label>
+                {% endfor %}
+            </div>
+        </fieldset>
+        <div class="config-grupo valores">
+            <label><span data-rotulo-valor>De</span>
+                <input type="number" name="valor_numero" step="any" inputmode="decimal" value="{{ valores.valor }}">
+            </label>
+            <label data-so-entre><span>Até</span>
+                <input type="number" name="valor_numero_ate" step="any" inputmode="decimal" value="{{ valores.ate }}">
+            </label>
+            {% if variavel.unidade %}<span class="valores-unidade">{{ variavel.unidade }}</span>{% endif %}
+        </div>
+
+    {% elif variavel.tipo == "ordinal" %}
+        <fieldset class="config-grupo">
+            <legend>Condição</legend>
+            <div class="escolhas">
+                {% for valor, rotulo in form.fields.operador.choices %}
+                    <label class="escolha"><input type="radio" name="operador" value="{{ valor }}" {% if criterio %}{% if valor == criterio.operador %}checked{% endif %}{% elif forloop.first %}checked{% endif %}><span>{{ rotulo }}</span></label>
+                {% endfor %}
+            </div>
+        </fieldset>
+        <fieldset class="config-grupo">
+            <legend>Nível</legend>
+            <div class="escolhas niveis">
+                {% for opcao in form.fields.opcoes.queryset %}
+                    <label class="escolha"><input type="radio" name="opcoes" value="{{ opcao.pk }}" {% if opcao.pk in marcadas %}checked{% endif %}><span>{{ opcao.rotulo }}</span></label>
+                {% endfor %}
+            </div>
+        </fieldset>
+
+    {% elif variavel.tipo == "nominal" and variavel.dominio.superior_id %}
+        <input type="hidden" name="operador" value="esta_em">
+        {% url 'estudos:opcoes_filhas' estudo.id variavel.id as url_filhas %}
+        {% include "estudos/_cascata.html" with url=url_filhas estados=variavel.dominio.superior.opcoes.all selecionadas=selecionadas %}
+
+    {% elif variavel.tipo == "nominal" %}
+        <input type="hidden" name="operador" value="esta_em">
+        <fieldset class="config-grupo">
+            <div class="config-cabeca">
+                <legend>Marque as opções</legend>
+                <div class="opcoes-botoes">
+                    {% if form.fields.opcoes.queryset|length > 2 %}<button type="button" data-marcar="todas">Todas</button>{% endif %}
+                    <button type="button" data-marcar="limpar">Limpar</button>
+                </div>
+            </div>
+            <div class="escolhas caixas">
+                {% for opcao in form.fields.opcoes.queryset %}
+                    <label class="escolha"><input type="checkbox" name="opcoes" value="{{ opcao.pk }}" {% if opcao.pk in marcadas %}checked{% endif %}><span>{{ opcao.rotulo }}</span></label>
+                {% endfor %}
+            </div>
+        </fieldset>
+
+    {% elif variavel.tipo == "data" %}
+        <fieldset class="config-grupo">
+            <legend>Condição</legend>
+            <div class="escolhas">
+                {% for valor, rotulo in form.fields.operador.choices %}
+                    <label class="escolha"><input type="radio" name="operador" value="{{ valor }}" {% if criterio %}{% if valor == criterio.operador %}checked{% endif %}{% elif forloop.first %}checked{% endif %}><span>{{ rotulo }}</span></label>
+                {% endfor %}
+            </div>
+        </fieldset>
+        <fieldset class="config-grupo">
+            <legend>Precisão da data</legend>
+            <div class="escolhas">
+                {% for valor, rotulo in form.fields.precisao.choices %}
+                    <label class="escolha"><input type="radio" name="precisao" value="{{ valor }}" {% if valor == valores.precisao %}checked{% endif %}><span>{{ rotulo }}</span></label>
+                {% endfor %}
+            </div>
+        </fieldset>
+        <div class="config-grupo valores">
+            <label><span>Ano</span><input type="number" name="ano" min="1900" max="2100" inputmode="numeric" value="{{ valores.ano }}"></label>
+            <label data-mes><span>Mês</span><input type="number" name="mes" min="1" max="12" inputmode="numeric" value="{{ valores.mes }}"></label>
+            <label data-dia><span>Dia</span><input type="number" name="dia" min="1" max="31" inputmode="numeric" value="{{ valores.dia }}"></label>
+        </div>
+        <div class="config-grupo valores" data-entre-data>
+            <label><span>Até o ano</span><input type="number" name="ano_ate" min="1900" max="2100" inputmode="numeric" value="{{ valores.ano_ate }}"></label>
+            <label data-mes><span>Mês</span><input type="number" name="mes_ate" min="1" max="12" inputmode="numeric" value="{{ valores.mes_ate }}"></label>
+            <label data-dia><span>Dia</span><input type="number" name="dia_ate" min="1" max="31" inputmode="numeric" value="{{ valores.dia_ate }}"></label>
+        </div>
+
+    {% elif variavel.tipo == "booleana" %}
+        <fieldset class="config-grupo">
+            <legend>Resposta</legend>
+            <div class="escolhas">
+                {% for valor, rotulo in form.fields.operador.choices %}
+                    <label class="escolha"><input type="radio" name="operador" value="{{ valor }}" {% if criterio and valor == criterio.operador %}checked{% endif %}><span>{{ rotulo }}</span></label>
+                {% endfor %}
+            </div>
+        </fieldset>
+    {% endif %}
+
+    <div class="previa">
+        <p class="previa-rotulo">Como vai ficar</p>
+        <div id="previa" aria-live="polite">
+            <div data-completo="0"><p class="previa-aviso">Defina a condição.</p></div>
+        </div>
+    </div>
+
+    <div class="config-acoes">
+        <button type="submit" class="painel-acao config-adicionar" disabled>{% if criterio %}Salvar alteração{% else %}Adicionar critério{% endif %}</button>
+        {% if criterio %}<button type="button" class="painel-voltar config-cancelar" data-cancelar>Cancelar</button>{% endif %}
+    </div>
+</form>

@@ -1,0 +1,94 @@
+<section class="dash" aria-label="Resumo dos seus estudos">
+    <div class="dash-cartoes">
+        {% for rotulo, total in painel.por_situacao %}
+            <div class="dash-cartao">
+                <span class="dash-numero">{{ total }}</span>
+                <span class="dash-legenda">{{ rotulo }}{{ total|pluralize }}</span>
+            </div>
+        {% endfor %}
+        <div class="dash-cartao">
+            <span class="dash-numero">{{ painel.concluidos }}</span>
+            <span class="dash-legenda">Voluntários concluídos</span>
+        </div>
+        <div class="dash-cartao">
+            <span class="dash-numero">{{ painel.eliminados }}</span>
+            <span class="dash-legenda">Voluntários eliminados</span>
+        </div>
+    </div>
+
+    {% if not painel.estudos %}
+        <p class="painel-vazio">Você ainda não tem estudos. Os números aparecem aqui depois do primeiro cadastro.</p>
+    {% elif not painel.tem_coletas %}
+        <p class="painel-vazio">Nenhuma coleta foi iniciada nos seus estudos. Os gráficos aparecem quando houver voluntários vinculados.</p>
+    {% else %}
+        <div class="painel-secao"><h2 class="painel-secao-titulo">Progresso por estudo</h2></div>
+        <div class="dash-bloco">
+            {% for linha in painel.estudos %}
+                <div class="dash-linha">
+                    <div class="dash-linha-topo">
+                        <strong>{{ linha.estudo.nome }}</strong>
+                        <span>
+                            {% if linha.meta %}{{ linha.concluidos }} de {{ linha.meta }} participantes{% else %}{{ linha.concluidos }} concluído{{ linha.concluidos|pluralize }}, sem meta definida{% endif %}
+                        </span>
+                    </div>
+                    {% if linha.meta %}
+                        <div class="dash-barra" role="img" aria-label="{{ linha.estudo.nome }}: {{ linha.progresso }}% da meta">
+                            <span class="dash-barra-cheia" style="width: {{ linha.progresso }}%"></span>
+                        </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+
+        <div class="painel-secao"><h2 class="painel-secao-titulo">Resultado da triagem por estudo</h2></div>
+        <div class="dash-bloco">
+            {% for linha in painel.estudos %}
+                <div class="dash-linha">
+                    <div class="dash-linha-topo"><strong>{{ linha.estudo.nome }}</strong><span>{{ linha.triados }} voluntário{{ linha.triados|pluralize }}</span></div>
+                    {% if linha.triados %}
+                        <div class="dash-barra dash-empilhada" role="img"
+                             aria-label="{{ linha.estudo.nome }}: {{ linha.concluidos }} concluídos, {{ linha.eliminados }} eliminados, {{ linha.em_coleta }} em coleta">
+                            {% for faixa in linha.faixas %}{% if faixa.total %}<span class="dash-faixa {{ faixa.classe }}" style="width: {{ faixa.largura }}%"></span>{% endif %}{% endfor %}
+                        </div>
+                        <ul class="dash-legenda-faixas">
+                            {% for faixa in linha.faixas %}<li><i class="dash-ponto {{ faixa.classe }}"></i>{{ faixa.rotulo }}: {{ faixa.total }}</li>{% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="dash-vazio">Sem voluntários neste estudo.</p>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+
+        <div class="painel-secao"><h2 class="painel-secao-titulo">Eliminações por critério</h2></div>
+        <div class="dash-bloco">
+            {% for linha in painel.estudos %}
+                <div class="dash-linha">
+                    <div class="dash-linha-topo"><strong>{{ linha.estudo.nome }}</strong></div>
+                    {% for criterio in linha.criterios %}
+                        <div class="dash-criterio">
+                            <span class="dash-criterio-texto">{{ criterio.frase }}</span>
+                            <span class="dash-criterio-total">{{ criterio.total }}</span>
+                        </div>
+                    {% empty %}
+                        <p class="dash-vazio">Nenhuma eliminação neste estudo.</p>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+        </div>
+
+        <div class="painel-secao"><h2 class="painel-secao-titulo">Coletas iniciadas por semana</h2></div>
+        <div class="dash-bloco">
+            <div class="dash-semanas" role="img" aria-label="Coletas iniciadas nas últimas {{ painel.semanas|length }} semanas">
+                {% for semana in painel.semanas %}
+                    <div class="dash-semana">
+                        <span class="dash-semana-total">{{ semana.total }}</span>
+                        <span class="dash-semana-coluna"><span style="height: {{ semana.altura }}%"></span></span>
+                        <span class="dash-semana-rotulo">{{ semana.rotulo }}</span>
+                    </div>
+                {% endfor %}
+            </div>
+            <p class="dash-vazio">Cada coluna é a semana que começa na data indicada.</p>
+        </div>
+    {% endif %}
+</section>

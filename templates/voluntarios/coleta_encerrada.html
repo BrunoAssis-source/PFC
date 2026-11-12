@@ -1,0 +1,15 @@
+{% extends "painel.html" %}
+{% block title %}Coleta de dados | UniData{% endblock %}
+{% block content %}
+<div class="painel-cabecalho">
+    <div>
+        <p class="painel-rotulo">Coleta de dados de pesquisa</p>
+        <h1 class="painel-titulo">{% if eliminada %}Coleta encerrada{% else %}Coleta concluída{% endif %}</h1>
+    </div>
+    <a class="painel-voltar" href="{% url 'voluntarios:detalhe' participacao.voluntario_id %}">Voltar à ficha</a>
+</div>
+
+<div class="painel-formulario">
+    <p>{% if eliminada %}Coleta encerrada: este voluntário não é compatível com o estudo.{% else %}Coleta concluída: todos os dados foram registrados.{% endif %}</p>
+</div>
+{% endblock %}
