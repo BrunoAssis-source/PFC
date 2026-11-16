@@ -33,6 +33,10 @@ class Participacao(models.Model):
         CONCLUIDA = "concluida", "concluída"
         REVOGADA = "revogada", "revogada"
 
+    class Origem(models.TextChoices):
+        COLETADO = "coletado", "coletado neste estudo"
+        REAPROVEITADO = "reaproveitado", "dados reaproveitados"
+
     voluntario = models.ForeignKey(Voluntario, on_delete=models.PROTECT, related_name="participacoes")
     estudo = models.ForeignKey(Estudo, on_delete=models.PROTECT, related_name="participacoes")
     situacao = models.CharField("situação", max_length=12, choices=Situacao.choices, default=Situacao.EM_COLETA)
@@ -46,11 +50,34 @@ class Participacao(models.Model):
         Criterio, null=True, blank=True, on_delete=models.SET_NULL, related_name="+", verbose_name="critério reprovado"
     )
     encerrada_em = models.DateTimeField("encerrada em", null=True, blank=True)
+    # Reaproveitado é o vínculo criado pela inclusão do pesquisador com dados de outro estudo, sem coleta nem novo TCLE.
+    origem = models.CharField("origem", max_length=13, choices=Origem.choices, default=Origem.COLETADO)
 
     class Meta:
         verbose_name = "participação"
         verbose_name_plural = "participações"
         constraints = [models.UniqueConstraint(fields=["voluntario", "estudo"], name="participacao_unica")]
+
+
+class DecisaoCandidato(models.Model):
+    # Uma linha por estudo e voluntário. Liga pelo código HMAC, sem chave estrangeira, para sobreviver à eliminação
+    # dos dados pessoais do voluntário. A decisão anterior fica na auditoria.
+    class Decisao(models.TextChoices):
+        INCLUIDO = "incluido", "incluído"
+        RECUSADO = "recusado", "recusado"
+
+    estudo = models.ForeignKey(Estudo, on_delete=models.PROTECT, related_name="decisoes")
+    codigo_voluntario = models.CharField("código do voluntário", max_length=64)
+    decisao = models.CharField("decisão", max_length=8, choices=Decisao.choices)
+    decidido_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
+    decidido_em = models.DateTimeField("decidido em")
+    # Classificação sugerida no momento da decisão, que muda depois com os dados.
+    classificacao_na_decisao = models.CharField("classificação na decisão", max_length=10)
+
+    class Meta:
+        verbose_name = "decisão sobre candidato"
+        verbose_name_plural = "decisões sobre candidatos"
+        constraints = [models.UniqueConstraint(fields=["estudo", "codigo_voluntario"], name="decisao_unica")]
 
 
 class PendenciaNotificada(models.Model):
