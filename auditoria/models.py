@@ -27,6 +27,10 @@ class RegistroAuditoria(models.Model):
         COLETA_ELIMINACAO = "coleta_eliminacao", "coleta encerrada por critério"
         PENDENCIAS_CONSULTA = "pendencias_consulta", "consulta às pendências"
         PENDENCIA_COLETA = "pendencia_coleta", "coleta de valores faltantes"
+        ESTUDO_CLASSIFICACAO = "estudo_classificacao", "consulta à classificação do estudo"
+        DECISAO_INCLUSAO = "decisao_inclusao", "inclusão de candidato"
+        DECISAO_RECUSA = "decisao_recusa", "recusa de candidato"
+        DECISAO_ALTERACAO = "decisao_alteracao", "mudança de decisão sobre candidato"
 
     # Nulo quando o login falhou antes de identificar um usuário válido.
     usuario = models.ForeignKey(
