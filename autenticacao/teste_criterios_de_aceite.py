@@ -68,14 +68,11 @@ def test_RF01_CA03_dados_validos_e_termos_aceitos_criam_a_conta_com_o_perfil_esc
     assert RegistroAuditoria.objects.filter(acao=Acao.CADASTRO, usuario=usuario).exists()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Divergência do RF01: o código exige confirmar o email antes de ativar a conta e não inicia a sessão.",
-)
-def test_RF01_CA03_usuario_e_direcionado_a_tela_inicial(client):
+def test_RF01_CA03_usuario_e_direcionado_a_confirmacao_do_email(client):
     resposta = client.post(reverse("cadastro"), dados_de_cadastro())
 
-    assert resposta.status_code == 302 and resposta.url == reverse("inicio")
+    assert resposta.status_code == 302 and resposta.url == reverse("cadastro_enviado")
+    assert not Usuario.objects.get().is_active
 
 
 def test_RF01_RN02_cadastro_sem_aceitar_os_termos_e_recusado(client):
