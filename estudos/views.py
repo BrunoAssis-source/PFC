@@ -14,6 +14,7 @@ from autenticacao.permissoes import exige_perfil
 from catalogo.busca import buscar_criterios, selecionaveis
 from catalogo.models import OpcaoDominio
 
+from voluntarios import eliminacao
 from voluntarios.pendencias import classificacao_do_estudo, sincronizar_notificacoes
 
 from .forms import CriterioForm, EstudoForm, VariavelPropostaForm
@@ -61,14 +62,37 @@ def criar(request):
 @exige_perfil(Usuario.Perfil.PESQUISADOR)
 def editar(request, id):
     estudo = estudo_do_pesquisador(request, id)
+    anterior = estudo.situacao
     form = EstudoForm(request.POST or None, instance=estudo)
     if request.method == "POST" and form.is_valid():
-        form.save()
+        # Encerrar elimina dados e não tem volta, então só acontece na tela de confirmação. Aqui a situação não muda.
+        encerrando = form.cleaned_data["situacao"] == Estudo.Situacao.ENCERRADO and anterior != Estudo.Situacao.ENCERRADO
+        estudo = form.save(commit=False)
+        if encerrando:
+            estudo.situacao = anterior
+        estudo.save()
         registrar(RegistroAuditoria.Acao.ESTUDO_EDICAO, request=request, usuario=request.user, objeto=estudo.nome)
         # Ativar o estudo pode deixar voluntários já registrados pendentes.
         sincronizar_notificacoes(estudo=estudo)
-        return redirect("estudos:detalhe", id=estudo.id)
+        return redirect("estudos:encerrar" if encerrando else "estudos:detalhe", id=estudo.id)
     return render(request, "estudos/formulario.html", {"form": form, "estudo": estudo})
+
+
+@exige_perfil(Usuario.Perfil.PESQUISADOR)
+@require_http_methods(["GET", "POST"])
+def encerrar(request, id):
+    estudo = estudo_do_pesquisador(request, id)
+    if estudo.situacao == Estudo.Situacao.ENCERRADO:
+        raise PermissionDenied("Este estudo já está encerrado.")
+    if request.method == "GET":
+        return render(request, "estudos/encerrar.html", {"estudo": estudo, **eliminacao.previa(estudo)})
+    resultado = eliminacao.encerrar(estudo, request.user, request)
+    messages.success(
+        request,
+        f"Estudo encerrado. {resultado['eliminados']} voluntário(s) eliminado(s) e "
+        f"{resultado['mantidos']} mantido(s) por estarem em outro estudo ativo.",
+    )
+    return redirect("estudos:detalhe", id=estudo.id)
 
 
 @exige_perfil(Usuario.Perfil.PESQUISADOR)

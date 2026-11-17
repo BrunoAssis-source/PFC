@@ -9,6 +9,10 @@ class EstudoAdmin(admin.ModelAdmin):
     list_filter = ("situacao",)
     search_fields = ("nome", "condicao")
 
+    def get_readonly_fields(self, request, obj=None):
+        # Mudar a situação por aqui pularia a confirmação e a eliminação de dados do encerramento.
+        return ("situacao",) if obj else ()
+
 
 @admin.register(Criterio)
 class CriterioAdmin(admin.ModelAdmin):

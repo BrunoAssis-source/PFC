@@ -34,6 +34,13 @@ class Estudo(models.Model):
     def __str__(self):
         return self.nome
 
+    def save(self, *args, **kwargs):
+        # Última barreira contra a reabertura, para o caminho que não passa pela tela (admin, shell, outra view).
+        if self.pk and self.situacao != self.Situacao.ENCERRADO:
+            if Estudo.objects.filter(pk=self.pk, situacao=self.Situacao.ENCERRADO).exists():
+                raise ValidationError("Estudo encerrado não volta a ficar ativo, porque os dados dos voluntários já foram eliminados.")
+        super().save(*args, **kwargs)
+
     def regras(self):
         """Critérios do estudo separados em inclusão e exclusão, já com o que a frase precisa."""
         criterios = self.criterios.select_related("variavel").prefetch_related("opcoes")

@@ -49,6 +49,22 @@ class EstudoForm(EstiloBootstrapMixin, forms.ModelForm):
             "participantes_necessarios": "Quantos participantes o estudo precisa reunir. Deixe em branco se ainda não houver número definido.",
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.situacao == Estudo.Situacao.ENCERRADO:
+            self.fields["situacao"].choices = [(Estudo.Situacao.ENCERRADO, Estudo.Situacao.ENCERRADO.label)]
+            self.fields["situacao"].help_text = "Estudo encerrado não volta a ficar ativo, porque os dados dos voluntários já foram eliminados."
+        else:
+            self.fields["situacao"].help_text = (
+                "Ao escolher Encerrado, o sistema pede uma confirmação e elimina os dados dos voluntários sem outro estudo ativo."
+            )
+
+    def clean_situacao(self):
+        situacao = self.cleaned_data["situacao"]
+        if self.instance.situacao == Estudo.Situacao.ENCERRADO and situacao != Estudo.Situacao.ENCERRADO:
+            raise forms.ValidationError("Estudo encerrado não volta a ficar ativo, porque os dados dos voluntários já foram eliminados.")
+        return situacao
+
 
 class CriterioForm(forms.ModelForm):
     class Meta:
