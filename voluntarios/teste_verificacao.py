@@ -162,6 +162,16 @@ def test_vale_o_valor_mais_recente(base, profissional):
     assert cumpre(participacao)[regra.id] is True
 
 
+def test_valores_com_a_mesma_data_desempatam_pelo_ultimo_gravado(base, profissional):
+    estudo, participacao = base
+    regra = criterio(estudo, "numero_filhos", "igual", valor_numero=2)
+    valor(participacao, "numero_filhos", profissional, valor_numero=1)
+    valor(participacao, "numero_filhos", profissional, valor_numero=2)
+    ValorColetado.objects.update(coletado_em=ValorColetado.objects.first().coletado_em)
+    assert ValorColetado.objects.values("coletado_em").distinct().count() == 1
+    assert cumpre(participacao)[regra.id] is True
+
+
 def test_valor_sensivel_entra_na_verificacao(base, profissional):
     estudo, participacao = base
     regra = criterio(estudo, "pessoa_com_deficiencia", "verdadeiro")
