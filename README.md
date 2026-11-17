@@ -12,17 +12,17 @@ Autor: Bruno de Faria Assis.
 
 ## Estado atual
 
-Estão implementados a autenticação com controle de acesso por perfil, o catálogo de variáveis, o cadastro de estudos e critérios, a identificação de voluntários por CPF, a coleta com verificação eliminatória, a tela de pendências do profissional, a classificação de elegibilidade no banco (RF10, sem a tela do pesquisador) e o dashboard do pesquisador na tela Início.
+Estão implementados a autenticação com controle de acesso por perfil, o catálogo de variáveis, o cadastro de estudos e critérios, a identificação de voluntários por CPF, a coleta com verificação eliminatória, a tela de pendências do profissional, a classificação de elegibilidade (RF10, no banco e na tela do pesquisador) e o dashboard do pesquisador na tela Início.
 
 Situação dos requisitos do documento:
 
 | Requisito | Situação |
 |---|---|
-| RF01 a RF03 (conta, login, redefinição de senha) | Implementados. No RF01 a conta só ativa depois de confirmar o email, e o documento prevê sessão iniciada no cadastro |
+| RF01 a RF03 (conta, login, redefinição de senha) | Implementados. No RF01 a conta só ativa depois de confirmar o email, e o cadastro leva à tela de confirmação, sem sessão iniciada |
 | RF04 a RF07 (estudos e critérios) | Implementados |
 | RF08 (identificar voluntário) | Implementado, com a conferência do TCLE antes da coleta, que o documento não prevê |
 | RF09 (coleta com verificação eliminatória) | Implementado |
-| RF10 (classificação) | Só a view SQL, sem a tela do pesquisador |
+| RF10 (classificação) | Implementado, com a view SQL e a tela do pesquisador. A decisão sobre os candidatos fica no RF12 |
 | RF11 (pendências) | Implementado |
 | RF12 a RF14 (decisão do pesquisador, eliminação de dados, auditoria completa) | RF14 parcial, os outros ainda não existem |
 
@@ -71,7 +71,9 @@ Os valores coletados ficam em linhas (voluntário, variável, valor, fonte, data
 
 Variável marcada como sensível (identidade de gênero, orientação sexual, pessoa com deficiência e raça ou cor) vai para a tabela `ValorSensivel`, com a mesma estrutura e sem cifra de coluna. A decisão tem quatro razões. O domínio de cada variável é uma lista fechada, então cifrar o valor esconderia pouco. A verificação e o reaproveitamento entre estudos comparam valores no banco, o que a cifra impediria. A tabela separada isola esses dados do restante. E o acesso é auditado, com o banco cifrado em repouso pelo provedor. A auditoria registra cada resposta a variável sensível, com o código da variável e o código curto do voluntário, nunca o valor.
 
-A classificação do RF10 existe no banco como view, `voluntarios_classificacao`, para cada par de voluntário e estudo ativo. Elegível atende a todos os critérios, inelegível deixa de atender a pelo menos um (mesmo faltando outros valores, ou com a coleta encerrada por critério) e pendente não reprova em nenhum, mas falta valor para algum. Ela reaproveita a verificação dos 15 operadores e as derivadas da coleta, e só considera valores dentro da vida útil da variável: o valor vencido conta como ausente. A view `voluntarios_faltantes` lista as variáveis que faltam em cada par, com a derivada trocada pelas origens. Ainda falta a tela do pesquisador e o registro da decisão (RF12).
+A classificação do RF10 existe no banco como view, `voluntarios_classificacao`, para cada par de voluntário e estudo ativo. Elegível atende a todos os critérios, inelegível deixa de atender a pelo menos um (mesmo faltando outros valores, ou com a coleta encerrada por critério) e pendente não reprova em nenhum, mas falta valor para algum. Ela reaproveita a verificação dos 15 operadores e as derivadas da coleta, e só considera valores dentro da vida útil da variável: o valor vencido conta como ausente. A view `voluntarios_faltantes` lista as variáveis que faltam em cada par, com a derivada trocada pelas origens.
+
+A tela do pesquisador fica em `/estudos/<id>/classificacao/`, com o link "Ver classificação" no detalhe do estudo. Lista os voluntários em quatro blocos: inelegíveis, pendentes, em coleta e elegíveis. Em coleta separa quem está sendo coletado neste estudo de quem é pendente por dados de outro estudo. O inelegível mostra todos os critérios reprovados ("Não atende: ..."), o pendente mostra as variáveis que faltam, e a resposta vencida aparece como "(vencida)", para distinguir de quem nunca respondeu. Quem foi eliminado na coleta não entra, porque já aparece na tela do estudo. Um filtro separa quem tem participação neste estudo de quem veio de outro. A contagem por situação e a página de 25 voluntários saem do banco. A tela mostra a data e a hora do cálculo, porque a classificação não é gravada: é recalculada a cada consulta. Estudo que não está ativo, ou que não tem critérios, mostra um aviso no lugar da lista. A consulta gera o registro de auditoria `estudo_classificacao`. A decisão sobre cada candidato (RF12) ainda não existe.
 
 A tela de pendências do profissional lista os voluntários que já têm dados na base e estão pendentes em algum estudo ativo, pelo código curto e só com as variáveis que faltam coletar. Não mostra critério, valor de critério nem classificação. Cada linha tem a conferência do TCLE e o botão Coletar, que abre a mesma coleta em passos pedindo apenas o que falta, com as mesmas regras: sensíveis por último, nada gravado até o fim e a mensagem neutra quando reprova. Concluída a coleta, o voluntário sai da lista. A consulta às pendências e o início da coleta dos faltantes entram na auditoria, sem dados pessoais.
 
@@ -218,6 +220,8 @@ Os testes cobrem a busca do catálogo (sinônimo, acento, erro de digitação, v
 
 Também há testes para editar critério (tela preenchida por tipo, gravação, validação e acesso), para a confirmação de remoção e para o log das três ações. A simulação do navegador usada para conferir o script da tela não está automatizada.
 
-Cada critério de aceite de RF01 a RF09 tem um teste com o código no nome, por exemplo `test_RF06_CA02_...`, nos arquivos `teste_criterios_de_aceite.py` de cada app e em `estudos/teste_criterio_data.py`. Um deles, o `RF01_CA03` de direcionar à tela inicial, está marcado como `xfail` porque o código exige confirmar o email. A verificação de elegibilidade tem testes por operador, a classificação por caso da RN26, e a coleta por estado, por acesso e pela mensagem neutra de eliminação. Os dados dos testes são todos sintéticos, com CPFs que só passam na conta dos dígitos verificadores.
+Cada critério de aceite de RF01 a RF09 tem um teste com o código no nome, por exemplo `test_RF06_CA02_...`, nos arquivos `teste_criterios_de_aceite.py` de cada app e em `estudos/teste_criterio_data.py`. O `RF01_CA03` confere que o cadastro leva à tela de confirmação do email e que a conta fica inativa até a confirmação. A verificação de elegibilidade tem testes por operador, a classificação por caso da RN26, e a coleta por estado, por acesso e pela mensagem neutra de eliminação. Os dados dos testes são todos sintéticos, com CPFs que só passam na conta dos dígitos verificadores.
+
+A tela de classificação tem testes em `voluntarios/teste_tela_classificacao.py`: acesso (visitante, profissional, estudo de outra pesquisadora), avisos de estudo inativo e sem critérios, cada voluntário no bloco do seu estado, filtro de origem, ausência de CPF na página, número de consultas constante, paginação e data do cálculo. Os casos da RN26 estão em `voluntarios/teste_classificacao.py`, incluindo a exclusão sem valor, que deixa o voluntário pendente.
 
 Ainda sem testes: cadastro, login, confirmação de email, gestão de usuários e as telas de lista e edição de estudo. A avaliação de um participante contra os critérios depende do cadastro de voluntários, que não existe.
