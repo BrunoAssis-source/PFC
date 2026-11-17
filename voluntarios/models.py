@@ -59,6 +59,23 @@ class Participacao(models.Model):
         constraints = [models.UniqueConstraint(fields=["voluntario", "estudo"], name="participacao_unica")]
 
 
+class RegistroAnonimo(models.Model):
+    # Resto de uma participação cujo voluntário teve os dados eliminados. Sem código nem chave estrangeira para o
+    # voluntário, só o que o painel do pesquisador precisa para continuar contando.
+    estudo = models.ForeignKey(Estudo, on_delete=models.PROTECT, related_name="registros_anonimos")
+    situacao = models.CharField("situação", max_length=12, choices=Participacao.Situacao.choices)
+    incluido = models.BooleanField("incluído pelo pesquisador", default=False)
+    criterio_reprovado = models.ForeignKey(
+        Criterio, null=True, blank=True, on_delete=models.SET_NULL, related_name="+", verbose_name="critério reprovado"
+    )
+    entrou_em = models.DateTimeField("entrou em")
+
+    class Meta:
+        verbose_name = "registro anônimo"
+        verbose_name_plural = "registros anônimos"
+
+
+
 class DecisaoCandidato(models.Model):
     # Uma linha por estudo e voluntário. Liga pelo código HMAC, sem chave estrangeira, para sobreviver à eliminação
     # dos dados pessoais do voluntário. A decisão anterior fica na auditoria.
