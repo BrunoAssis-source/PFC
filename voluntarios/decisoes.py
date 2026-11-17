@@ -8,7 +8,8 @@ from auditoria.models import RegistroAuditoria
 from auditoria.servicos import registrar
 from estudos.models import Estudo
 
-from .models import DecisaoCandidato, Participacao, ValorColetado, ValorSensivel, Voluntario
+from .eliminacao import apagar_dados, tem_outro_estudo_ativo
+from .models import DecisaoCandidato, Participacao, Voluntario
 from .pendencias import _consultar, classificacao
 
 Decisao = DecisaoCandidato.Decisao
@@ -178,21 +179,9 @@ def _desfazer_vinculo(estudo, voluntario):
     """Devolve se os dados do voluntário foram apagados por ele não ter mais estudo ativo vinculado."""
     # A participação coletada neste estudo fica, porque os valores guardam a origem por ela.
     Participacao.objects.filter(voluntario=voluntario, estudo=estudo, origem=Participacao.Origem.REAPROVEITADO).delete()
-    outro_estudo = (
-        Participacao.objects.filter(
-            voluntario=voluntario,
-            estudo__situacao=Estudo.Situacao.ATIVO,
-            situacao__in=[Participacao.Situacao.EM_COLETA, Participacao.Situacao.CONCLUIDA],
-        )
-        .exclude(estudo=estudo)
-        .exists()
-    )
-    if outro_estudo:
+    if tem_outro_estudo_ativo(voluntario, estudo):
         return False
-    ValorColetado.objects.filter(codigo_voluntario=voluntario.codigo_hmac).delete()
-    ValorSensivel.objects.filter(codigo_voluntario=voluntario.codigo_hmac).delete()
-    voluntario.participacoes.all().delete()
-    voluntario.delete()
+    apagar_dados([voluntario])
     return True
 
 
