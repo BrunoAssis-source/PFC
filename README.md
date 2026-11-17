@@ -24,7 +24,9 @@ Situação dos requisitos do documento:
 | RF09 (coleta com verificação eliminatória) | Implementado |
 | RF10 (classificação) | Implementado, com a view SQL e a tela do pesquisador. A decisão sobre os candidatos fica no RF12 |
 | RF11 (pendências) | Implementado |
-| RF12 a RF14 (decisão do pesquisador, eliminação de dados, auditoria completa) | RF14 parcial, os outros ainda não existem |
+| RF12 (decisão do pesquisador) | Implementado |
+| RF13 (eliminação de dados) | Implementado, sem o prazo por estudo da RN33, que fica como trabalho futuro |
+| RF14 (auditoria completa) | Parcial |
 
 A autenticação cobre o cadastro restrito ao domínio `@alunos.umc.br`, login, recuperação de senha por email e a separação entre pesquisador e profissional, com as rotas de cada um negando acesso a quem não tem o perfil.
 
@@ -107,7 +109,17 @@ Ficaram de fora, por decisão de escopo, estes itens.
 - Travamento por triagem iniciada. O critério de um estudo com voluntários já triados não deveria mudar, e alterar passaria a exigir uma nova versão do estudo. Hoje a participação guarda o critério reprovado, mas editar o critério continua livre em estudo ativo.
 - Histórico e desfazer. A remoção apaga o critério de verdade, e só o registro de auditoria guarda a frase. Manter os critérios removidos ou alterados como versões permitiria consultar o estudo como ele estava em uma data e desfazer uma remoção.
 
-Política de privacidade e termos de uso são páginas próprias, abertas sem login, e o cadastro exige a leitura dos dois antes de criar conta. A política descreve o dado de conta, o CPF cifrado com código HMAC-SHA256, os dados sensíveis em tabela separada e o prazo de retenção ligado ao estudo ativo. A eliminação dos dados ao encerrar o estudo (RF13) ainda não foi implementada.
+Política de privacidade e termos de uso são páginas próprias, abertas sem login, e o cadastro exige a leitura dos dois antes de criar conta. A política descreve o dado de conta, o CPF cifrado com código HMAC-SHA256, os dados sensíveis em tabela separada e o prazo de retenção ligado ao estudo ativo. A eliminação dos dados ao encerrar o estudo (RF13) está descrita a seguir.
+
+O encerramento de estudo (RF13) começa na tela do estudo ou na edição: escolher "Encerrado" leva a uma confirmação que mostra só duas quantidades, quantos voluntários serão eliminados e quantos permanecem por estarem em outro estudo ativo. Confirmar roda tudo em uma transação (`voluntarios/eliminacao.py`). Se qualquer passo falhar, o estudo mantém a situação anterior e nada é apagado. Está vinculado ao estudo o voluntário com participação concluída, em coleta ou eliminada, ou com decisão de incluído ou recusado. Estudo ativo vinculado é o que está com situação ativa, e rascunho e encerrado não contam. Quem não tem vínculo com outro estudo ativo perde o CPF cifrado, o código, os valores comuns e sensíveis, as participações e as decisões. Quem tem vínculo permanece com todos os dados. A mesma regra serve à recusa de candidato do RF12.
+
+Antes de apagar as participações, o sistema copia para `RegistroAnonimo` só o que o painel conta: estudo, situação, se foi incluído, critério reprovado e a data de entrada. A tabela não tem CPF, código nem ligação com o voluntário, então o painel mantém concluídos, eliminados e eliminações por critério depois do encerramento. Estudo encerrado não volta a ficar ativo, porque os dados já foram eliminados. A tela, o servidor (`Estudo.save`) e o admin (situação somente leitura) recusam a reabertura. Só o pesquisador dono encerra: o profissional recebe 403 e outro pesquisador recebe 404.
+
+A auditoria registra a ação `eliminacao_encerramento` com o estudo, o autor, a data e as quantidades eliminada e mantida, sem CPF nem código. Os registros anteriores de auditoria guardam o código abreviado do voluntário (oito caracteres). Depois da eliminação esse código não aponta mais para nenhum cadastro, e perde a ligação com qualquer pessoa.
+
+### Trabalho futuro na eliminação
+
+- Prazo por estudo (RN33). A aprovação ética de um estudo pode exigir prazo de guarda diferente da regra geral. Seria um campo de prazo no estudo e uma rotina agendada que adia a eliminação até a data, em vez de rodar no encerramento.
 
 ## Stack
 
