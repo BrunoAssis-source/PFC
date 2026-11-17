@@ -4,7 +4,7 @@ from django.db.models import Count, Q
 from django.db.models.functions import TruncWeek
 from django.utils import timezone
 
-from voluntarios.models import Participacao
+from voluntarios.models import Participacao, RegistroAnonimo
 
 from .models import Criterio, Estudo
 
@@ -14,11 +14,24 @@ SEMANAS = 8
 def eliminacoes(pesquisador):
     """Único ponto que lê as eliminações do painel, para a mudança na forma de registrá-las ficar só aqui.
 
-    Hoje a eliminação é a participação na situação eliminada, com o critério reprovado guardado nela.
+    A eliminação é a participação na situação eliminada, com o critério reprovado guardado nela. Depois que o estudo
+    encerra, as participações somem e a contagem passa a vir dos registros anônimos.
     """
-    base = Participacao.objects.filter(estudo__pesquisador=pesquisador, situacao=Participacao.Situacao.ELIMINADA)
-    por_estudo = dict(base.values_list("estudo_id").annotate(total=Count("id")))
-    agrupadas = list(base.values("estudo_id", "criterio_reprovado_id").annotate(total=Count("id")).order_by("-total"))
+    agrupadas = []
+    por_estudo = {}
+    for modelo in (Participacao, RegistroAnonimo):
+        base = modelo.objects.filter(estudo__pesquisador=pesquisador, situacao=Participacao.Situacao.ELIMINADA)
+        for estudo_id, total in base.values_list("estudo_id").annotate(total=Count("id")):
+            por_estudo[estudo_id] = por_estudo.get(estudo_id, 0) + total
+        agrupadas += base.values("estudo_id", "criterio_reprovado_id").annotate(total=Count("id"))
+    somadas = {}
+    for linha in agrupadas:
+        chave = (linha["estudo_id"], linha["criterio_reprovado_id"])
+        somadas[chave] = somadas.get(chave, 0) + linha["total"]
+    agrupadas = sorted(
+        ({"estudo_id": e, "criterio_reprovado_id": c, "total": t} for (e, c), t in somadas.items()),
+        key=lambda linha: -linha["total"],
+    )
     criterios = Criterio.objects.select_related("variavel").prefetch_related("opcoes").in_bulk(
         {linha["criterio_reprovado_id"] for linha in agrupadas if linha["criterio_reprovado_id"]}
     )
@@ -39,8 +52,14 @@ def _estudos(pesquisador, eliminadas):
         concluidos=Count("participacoes", filter=Q(participacoes__situacao=Participacao.Situacao.CONCLUIDA)),
         em_coleta=Count("participacoes", filter=Q(participacoes__situacao=Participacao.Situacao.EM_COLETA)),
     )
+    anonimos_concluidos = dict(
+        RegistroAnonimo.objects.filter(estudo__pesquisador=pesquisador, situacao=Participacao.Situacao.CONCLUIDA)
+        .values_list("estudo_id")
+        .annotate(total=Count("id"))
+    )
     linhas = []
     for estudo in estudos.order_by("nome"):
+        estudo.concluidos += anonimos_concluidos.get(estudo.id, 0)
         eliminados = eliminadas["por_estudo"].get(estudo.id, 0)
         triados = estudo.concluidos + eliminados + estudo.em_coleta
         meta = estudo.participantes_necessarios
@@ -71,15 +90,13 @@ def _por_semana(pesquisador):
     hoje = timezone.localdate()
     segunda = hoje - timedelta(days=hoje.weekday())
     inicio = segunda - timedelta(weeks=SEMANAS - 1)
-    contagem = {
-        semana.date(): total
-        for semana, total in Participacao.objects.filter(
-            estudo__pesquisador=pesquisador, tcle_aceito_em__date__gte=inicio
-        )
-        .annotate(semana=TruncWeek("tcle_aceito_em"))
-        .values_list("semana")
-        .annotate(total=Count("id"))
-    }
+    contagem = {}
+    for modelo, data in ((Participacao, "tcle_aceito_em"), (RegistroAnonimo, "entrou_em")):
+        filtro = {"estudo__pesquisador": pesquisador, f"{data}__date__gte": inicio}
+        for semana, total in (
+            modelo.objects.filter(**filtro).annotate(semana=TruncWeek(data)).values_list("semana").annotate(total=Count("id"))
+        ):
+            contagem[semana.date()] = contagem.get(semana.date(), 0) + total
     semanas = [inicio + timedelta(weeks=n) for n in range(SEMANAS)]
     maior = max([contagem.get(s, 0) for s in semanas] + [1])
     return [
