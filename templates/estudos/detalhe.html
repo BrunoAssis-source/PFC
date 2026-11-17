@@ -61,6 +61,7 @@
         {% if estudo.situacao == "encerrado" %}Ver critérios{% elif resumo %}Gerenciar critérios{% else %}<span aria-hidden="true">+</span> Definir critérios{% endif %}
     </a>
     <a class="painel-acao" href="{% url 'estudos:classificacao' estudo.id %}">Ver classificação</a>
+    <a class="painel-acao" href="{% url 'voluntarios:candidatos' estudo.id %}">Candidatos</a>
     <a class="painel-voltar" href="{% url 'estudos:listar' %}">Voltar para os estudos</a>
 </div>
 {% endblock %}

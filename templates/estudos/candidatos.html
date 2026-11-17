@@ -1,0 +1,127 @@
+{% extends "painel.html" %}
+{% block title %}Candidatos de {{ estudo.nome }} | UniData{% endblock %}
+{% block content %}
+<div class="painel-cabecalho">
+    <div>
+        <p class="painel-rotulo">{{ estudo.condicao }}</p>
+        <h1 class="painel-titulo">Candidatos</h1>
+        <p class="painel-abertura">{{ estudo.nome }}. A situação é uma sugestão. Só entra no estudo quem você incluir, e só se ainda for elegível no momento da inclusão. A recusa é livre.</p>
+    </div>
+    <div class="painel-cabecalho-acoes">
+        <a class="painel-voltar" href="{% url 'estudos:detalhe' estudo.id %}">Voltar ao estudo</a>
+    </div>
+</div>
+
+{% if aviso %}
+    <div class="alert alert-warning" role="status">{{ aviso }}</div>
+{% else %}
+    {% if somente_leitura %}
+        <div class="alert alert-info" role="status">Estudo {{ estudo.get_situacao_display|lower }}: as decisões só podem ser consultadas.</div>
+    {% endif %}
+
+    <div class="painel-indicadores">
+        <div class="painel-indicador">
+            <span class="painel-numero">{{ meta.incluidos }}{% if meta.necessarios is not None %} de {{ meta.necessarios }}{% endif %}</span>
+            <span class="painel-legenda">Incluídos{% if meta.necessarios is not None %} / necessários{% endif %}</span>
+        </div>
+        <div class="painel-indicador">
+            <span class="painel-numero">{{ total }}</span>
+            <span class="painel-legenda">Na lista</span>
+        </div>
+    </div>
+    {% if meta.acima %}
+        <div class="alert alert-warning" role="status">A meta do estudo foi ultrapassada. É só um aviso, as inclusões continuam permitidas.</div>
+    {% endif %}
+
+    {% if not somente_leitura %}
+    <form method="get" class="row g-2 align-items-end mb-3" aria-label="Filtros">
+        <fieldset class="col-auto">
+            <legend class="form-label small mb-0">Situação</legend>
+            {% for valor, rotulo in situacoes %}
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="s-{{ valor }}" name="situacao" value="{{ valor }}" {% if valor in filtros.situacoes %}checked{% endif %}>
+                    <label class="form-check-label small" for="s-{{ valor }}">{{ rotulo }}</label>
+                </div>
+            {% endfor %}
+        </fieldset>
+        <div class="col-auto">
+            <label class="form-label small mb-0" for="f-origem">Origem</label>
+            <select class="form-select form-select-sm" id="f-origem" name="origem">
+                <option value="">Todas</option>
+                <option value="deste" {% if filtros.origem == "deste" %}selected{% endif %}>Coletados neste estudo</option>
+                <option value="outros" {% if filtros.origem == "outros" %}selected{% endif %}>Vindos de outros estudos</option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <label class="form-label small mb-0" for="f-decisao">Decisão</label>
+            <select class="form-select form-select-sm" id="f-decisao" name="decisao">
+                <option value="">Todas</option>
+                <option value="sem" {% if filtros.decisao == "sem" %}selected{% endif %}>Sem decisão</option>
+                <option value="incluido" {% if filtros.decisao == "incluido" %}selected{% endif %}>Incluídos</option>
+                <option value="recusado" {% if filtros.decisao == "recusado" %}selected{% endif %}>Recusados</option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <label class="form-label small mb-0" for="f-codigo">Código</label>
+            <input class="form-control form-control-sm" id="f-codigo" name="codigo" value="{{ filtros.codigo }}" maxlength="64" autocomplete="off">
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-sm btn-outline-secondary" type="submit">Filtrar</button>
+            <a class="btn btn-sm btn-link" href="{% url 'voluntarios:candidatos' estudo.id %}">Limpar</a>
+        </div>
+    </form>
+    {% endif %}
+
+    {% if not linhas %}
+        <p class="painel-vazio">Nenhum candidato com estes filtros.</p>
+    {% else %}
+    <form method="post" id="decisao">
+        {% csrf_token %}
+        <div class="painel-lista">
+            {% for linha in linhas %}
+            <label class="painel-linha">
+                {% if not somente_leitura %}
+                    <input type="checkbox" class="form-check-input" name="voluntarios" value="{{ linha.voluntario_id }}" aria-label="Selecionar {{ linha.codigo }}">
+                {% endif %}
+                <span class="painel-linha-texto">
+                    <strong>Voluntário {{ linha.codigo }}</strong>
+                    <span class="painel-linha-sub">
+                        {% if somente_leitura %}
+                            Classificação na decisão: {{ linha.classe }}. Decidido em {{ linha.decidido_em|date:"d/m/Y H:i" }}.
+                        {% else %}
+                            {% if linha.classe == "elegivel" %}Elegível{% elif linha.classe == "pendente" %}Pendente, falta dado{% elif linha.classe == "em_coleta" %}Em coleta{% else %}Inelegível{% endif %},
+                            {% if linha.origem == "deste" %}coletado neste estudo{% else %}de outro estudo{% endif %}.
+                            {% if linha.mudou_desde_a_inclusao %}<span class="text-danger">Situação mudou desde a inclusão.</span>{% endif %}
+                        {% endif %}
+                    </span>
+                </span>
+                <span class="painel-linha-contagem">
+                    {% if linha.decisao == "incluido" %}Incluído{% elif linha.decisao == "recusado" %}Recusado{% else %}Sem decisão{% endif %}
+                </span>
+            </label>
+            {% endfor %}
+        </div>
+        {% if not somente_leitura %}
+        <div class="mt-3 d-flex gap-2">
+            <button class="btn btn-primary" type="submit" formaction="{% url 'voluntarios:incluir_candidatos' estudo.id %}">Incluir selecionados</button>
+            <button class="btn btn-outline-danger" type="submit" formaction="{% url 'voluntarios:recusar_candidatos' estudo.id %}">Recusar selecionados</button>
+        </div>
+        {% endif %}
+    </form>
+    {% endif %}
+
+    {% if paginas > 1 %}
+    <nav aria-label="Paginação" class="mt-3">
+        <ul class="pagination pagination-sm">
+            {% if pagina > 1 %}
+                <li class="page-item"><a class="page-link" href="?{% if consulta %}{{ consulta }}&amp;{% endif %}pagina={{ pagina|add:'-1' }}">Anterior</a></li>
+            {% endif %}
+            <li class="page-item disabled"><span class="page-link">Página {{ pagina }} de {{ paginas }}</span></li>
+            {% if pagina < paginas %}
+                <li class="page-item"><a class="page-link" href="?{% if consulta %}{{ consulta }}&amp;{% endif %}pagina={{ pagina|add:'1' }}">Próxima</a></li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+{% endif %}
+{% endblock %}

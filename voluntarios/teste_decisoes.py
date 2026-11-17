@@ -162,7 +162,7 @@ def test_incluido_que_deixa_de_ser_elegivel_continua_incluido_com_aviso(
     decisoes.incluir(estudo, [elegivel.id], pesquisadora)
     valor(na_origem(elegivel, origem), "numero_filhos", profissional, valor_numero=0)
 
-    pagina = decisoes.candidatos(estudo)
+    pagina = decisoes.candidatos(estudo, situacoes=["inelegivel"])
 
     assert decisao_de(estudo, elegivel).decisao == Decisao.INCLUIDO
     linha = pagina["linhas"][0]
@@ -297,15 +297,16 @@ def test_lista_de_candidatos_filtra_pagina_e_nao_expoe_cpf(pesquisadora, estudo,
         return {linha["voluntario_id"] for linha in decisoes.candidatos(estudo, **filtros)["linhas"]}
 
     padrao = decisoes.candidatos(estudo)
-    assert ids() == {elegivel.id, pendente.id}
-    assert ids(situacao="inelegivel") == {inelegivel.id}
+    assert ids() == {elegivel.id}
+    assert ids(situacoes=["elegivel", "pendente"]) == {elegivel.id, pendente.id}
+    assert ids(situacoes=["inelegivel"]) == {inelegivel.id}
     assert ids(decisao="incluido") == {elegivel.id}
-    assert ids(decisao="sem") == {pendente.id}
-    assert ids(origem="outros") == {elegivel.id, pendente.id}
+    assert ids(situacoes=["pendente"], decisao="sem") == {pendente.id}
+    assert ids(origem="outros") == {elegivel.id}
     assert ids(origem="deste") == set()
-    assert ids(codigo=pendente.codigo_hmac[:6].upper()) == {pendente.id}
+    assert ids(situacoes=["pendente"], codigo=pendente.codigo_hmac[:6].upper()) == {pendente.id}
     assert ids(codigo="%") == set()
-    paginada = decisoes.candidatos(estudo, por_pagina=1, pagina=2)
+    paginada = decisoes.candidatos(estudo, situacoes=["elegivel", "pendente"], por_pagina=1, pagina=2)
     assert paginada["paginas"] == 2 and len(paginada["linhas"]) == 1
     texto = str(padrao)
     assert cpf_sintetico(1) not in texto and elegivel.codigo_hmac not in texto
@@ -352,3 +353,77 @@ class TestAcesso:
 
     def test_get_nao_e_aceito(self, cliente, estudo, nome):
         assert cliente.get(endereco(nome, estudo)).status_code == 405
+
+
+def test_tela_lista_candidatos_com_codigo_curto_e_sem_cpf(cliente, pesquisadora, estudo, elegivel, pendente, inelegivel):
+    decisoes.incluir(estudo, [elegivel.id], pesquisadora)
+
+    resposta = cliente.get(endereco("candidatos", estudo))
+
+    texto = resposta.content.decode()
+    assert resposta.status_code == 200
+    assert elegivel.codigo_hmac[:8] in texto
+    assert pendente.codigo_hmac[:8] not in texto and inelegivel.codigo_hmac[:8] not in texto
+    assert cpf_sintetico(1) not in texto and elegivel.codigo_hmac not in texto
+    assert "Incluir selecionados" in texto and "Recusar selecionados" in texto
+
+
+def test_tela_aplica_o_filtro_de_situacao(cliente, estudo, elegivel, pendente, inelegivel):
+    resposta = cliente.get(endereco("candidatos", estudo), {"situacao": ["inelegivel"]})
+
+    assert inelegivel.codigo_hmac[:8] in resposta.content.decode()
+    assert elegivel.codigo_hmac[:8] not in resposta.content.decode()
+
+
+def test_tela_mostra_o_aviso_de_situacao_mudada(cliente, pesquisadora, profissional, origem, estudo, elegivel):
+    decisoes.incluir(estudo, [elegivel.id], pesquisadora)
+    valor(na_origem(elegivel, origem), "numero_filhos", profissional, valor_numero=0)
+
+    resposta = cliente.get(endereco("candidatos", estudo), {"situacao": ["inelegivel"]})
+    assert "Situação mudou desde a inclusão" in resposta.content.decode()
+
+
+def test_tela_de_estudo_encerrado_e_so_leitura(cliente, pesquisadora, estudo, elegivel):
+    decisoes.incluir(estudo, [elegivel.id], pesquisadora)
+    estudo.situacao = Estudo.Situacao.ENCERRADO
+    estudo.save()
+
+    texto = cliente.get(endereco("candidatos", estudo)).content.decode()
+
+    assert elegivel.codigo_hmac[:8] in texto
+    assert "Incluir selecionados" not in texto and 'type="checkbox"' not in texto
+
+
+def test_tela_de_rascunho_avisa_que_ainda_nao_ha_candidatos(cliente, estudo):
+    estudo.situacao = Estudo.Situacao.RASCUNHO
+    estudo.save()
+
+    assert "quando o estudo estiver ativo" in cliente.get(endereco("candidatos", estudo)).content.decode()
+
+
+def test_tela_nega_profissional_e_outro_pesquisador(client, profissional, estudo):
+    client.force_login(profissional)
+    assert client.get(endereco("candidatos", estudo)).status_code == 403
+
+    outra = Usuario.objects.create_user(
+        "outra@alunos.umc.br", "Outra Pesquisadora", "Senha!2026x", perfil=Usuario.Perfil.PESQUISADOR
+    )
+    client.force_login(outra)
+    assert client.get(endereco("candidatos", estudo)).status_code == 404
+
+
+def test_estudo_sem_criterios_nao_inclui_ninguem(pesquisadora, profissional, origem):
+    vazio = novo_estudo(pesquisadora, "Sem critérios")
+    alguem = pessoa(profissional, origem, 5, filhos=1)
+
+    relatorio = decisoes.incluir(vazio, [alguem.id], pesquisadora)
+
+    assert relatorio["feitos"] == [] and "critérios" in relatorio["pulados"][0][1]
+
+
+def test_tela_abre_so_com_elegiveis_e_marcar_dois_filtros_mostra_os_dois(cliente, estudo, elegivel, pendente):
+    padrao = cliente.get(endereco("candidatos", estudo)).content.decode()
+    ampliado = cliente.get(endereco("candidatos", estudo), {"situacao": ["elegivel", "pendente"]}).content.decode()
+
+    assert pendente.codigo_hmac[:8] not in padrao
+    assert elegivel.codigo_hmac[:8] in ampliado and pendente.codigo_hmac[:8] in ampliado

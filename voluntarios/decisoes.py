@@ -40,7 +40,7 @@ SELECT * FROM base
 WHERE (%s = '' OR deste = (%s = 'deste'))
   AND (%s = '' OR COALESCE(decisao, 'sem') = %s)
   AND codigo_hmac LIKE %s
-  AND ((%s = '' AND (classe <> 'inelegivel' OR decisao = 'incluido')) OR classe = %s)
+  AND classe = ANY(%s::text[])
 """
 
 
@@ -51,10 +51,11 @@ def meta(estudo):
     return {"incluidos": incluidos, "necessarios": necessarios, "acima": necessarios is not None and incluidos > necessarios}
 
 
-def candidatos(estudo, situacao="", origem="", decisao="", codigo="", pagina=1, por_pagina=POR_PAGINA):
+def candidatos(estudo, situacoes=("elegivel",), origem="", decisao="", codigo="", pagina=1, por_pagina=POR_PAGINA):
     """Uma página de candidatos do estudo, só com o código curto. Nunca lê nem devolve o CPF.
 
-    Sem filtro de situação, os inelegíveis ficam de fora, salvo quem já foi incluído, para o aviso de mudança aparecer.
+    Mostra só as situações pedidas, por padrão os elegíveis. Quem já foi incluído e mudou de situação só aparece se a
+    situação atual dele estiver entre as pedidas.
     Estudo que não está ativo não tem classificação, então devolve só as decisões já registradas.
     """
     resultado = {"linhas": [], "pagina": 1, "paginas": 1, "total": 0, "meta": meta(estudo)}
@@ -76,7 +77,7 @@ def candidatos(estudo, situacao="", origem="", decisao="", codigo="", pagina=1, 
     prefixo = codigo.strip().lower()
     padrao = (prefixo if re.fullmatch("[0-9a-f]*", prefixo) else "!") + "%"
     filtro = [
-        estudo.id, origem, origem, decisao, decisao, padrao, situacao, situacao,
+        estudo.id, origem, origem, decisao, decisao, padrao, list(situacoes) or ["elegivel"],
     ]
     total = _consultar(f"SELECT count(*) FROM ({BASE}) t", filtro)[0][0]
     paginas = max(1, -(-total // por_pagina))
@@ -124,6 +125,8 @@ def _decidir(estudo, voluntario_ids, usuario, nova, request):
         ids = list(dict.fromkeys(voluntario_ids))
         voluntarios = Voluntario.objects.in_bulk(ids)
         relatorio = {"feitos": [], "pulados": []}
+        # Sem critérios a view classifica todos como elegíveis, e isso não é uma avaliação.
+        sem_criterios = not estudo.criterios.exists()
         for voluntario_id in ids:
             voluntario = voluntarios.get(voluntario_id)
             if voluntario is None:
@@ -135,8 +138,9 @@ def _decidir(estudo, voluntario_ids, usuario, nova, request):
                 relatorio["pulados"].append((codigo, f"já estava {Decisao(nova).label}"))
                 continue
             classe = classificacao(voluntario.id, estudo.id).get((voluntario.id, estudo.id), "")
-            if nova == Decisao.INCLUIDO and classe != "elegivel":
-                relatorio["pulados"].append((codigo, MOTIVOS.get(classe, "fora da classificação do estudo")))
+            if nova == Decisao.INCLUIDO and (sem_criterios or classe != "elegivel"):
+                motivo = "o estudo não tem critérios" if sem_criterios else MOTIVOS.get(classe, "fora da classificação do estudo")
+                relatorio["pulados"].append((codigo, motivo))
                 continue
 
             DecisaoCandidato.objects.update_or_create(
