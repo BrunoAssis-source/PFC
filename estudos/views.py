@@ -3,6 +3,7 @@ from django.db.models import Count
 from django.core.exceptions import PermissionDenied
 from django.http import Http404
 from django.urls import reverse
+from django.utils import timezone
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods, require_POST
 
@@ -13,7 +14,7 @@ from autenticacao.permissoes import exige_perfil
 from catalogo.busca import buscar_criterios, selecionaveis
 from catalogo.models import OpcaoDominio
 
-from voluntarios.pendencias import sincronizar_notificacoes
+from voluntarios.pendencias import classificacao_do_estudo, sincronizar_notificacoes
 
 from .forms import CriterioForm, EstudoForm, VariavelPropostaForm
 from .models import Criterio, Estudo
@@ -79,6 +80,38 @@ def detalhe(request, id):
         "voluntario", "criterio_reprovado__variavel"
     ).order_by("-encerrada_em")
     return render(request, "estudos/detalhe.html", contexto)
+
+
+@exige_perfil(Usuario.Perfil.PESQUISADOR)
+def classificacao(request, id):
+    estudo = estudo_do_pesquisador(request, id)
+    registrar(RegistroAuditoria.Acao.ESTUDO_CLASSIFICACAO, request=request, usuario=request.user, objeto=estudo.nome)
+    origem = request.GET.get("origem", "")
+    if origem not in ("deste", "outros"):
+        origem = ""
+    contexto = {"estudo": estudo, "origem": origem}
+    # A view de classificação só considera estudo ativo, e estudo sem critério deixaria todos como elegíveis.
+    if estudo.situacao != Estudo.Situacao.ATIVO:
+        contexto["aviso"] = "A classificação só existe para estudo ativo."
+    elif not estudo.criterios.exists():
+        contexto["aviso"] = "Este estudo não tem critérios. Sem critérios não há o que avaliar."
+    else:
+        pagina = request.GET.get("pagina", "")
+        resultado = classificacao_do_estudo(estudo, origem, int(pagina) if pagina.isdigit() else 1)
+        rotulos = {"inelegivel": "Inelegíveis", "pendente": "Pendentes", "em_coleta": "Em coleta", "elegivel": "Elegíveis"}
+        contexto.update(
+            # A classificação não é gravada: cada consulta calcula de novo com os dados de agora.
+            calculada_em=timezone.now(),
+            grupos=[
+                (rotulos[classe], [linha for linha in resultado["linhas"] if linha["classe"] == classe])
+                for classe in rotulos
+            ],
+            totais=[(rotulos[classe], resultado["totais"][classe]) for classe in rotulos],
+            total=sum(resultado["totais"].values()),
+            pagina=resultado["pagina"],
+            paginas=resultado["paginas"],
+        )
+    return render(request, "estudos/classificacao.html", contexto)
 
 
 def variavel_selecionavel(variavel_id):

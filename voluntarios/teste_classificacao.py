@@ -6,7 +6,7 @@ from django.utils import timezone
 from estudos.models import Estudo
 from voluntarios import cpf
 from voluntarios.models import Participacao, ValorColetado, ValorSensivel, Voluntario
-from voluntarios.pendencias import classificacao, pendentes, variaveis_faltantes
+from voluntarios.pendencias import classificacao, classificacao_do_estudo, pendentes, variaveis_faltantes
 
 from .conftest import criterio, novo_estudo, opcoes, variavel
 from .teste_verificacao import nascido_ha, valor
@@ -215,3 +215,80 @@ def test_pendente_so_aparece_nos_estudos_em_que_falta_valor(voluntario, particip
 
     assert [linha["estudo"] for linha in pendentes()] == [estudo]
     assert classe(voluntario, outro) == "elegivel"
+
+
+def test_RN26_exclusao_sem_valor_deixa_pendente_e_nao_elegivel(voluntario, participacao, profissional, estudo):
+    criterio(estudo, "numero_filhos", "maior_igual", valor_numero=1)
+    criterio(estudo, "cuidador_de_dependente", "verdadeiro", tipo_regra="exclusao")
+    dar(participacao, profissional, "numero_filhos", valor_numero=2)
+
+    assert classe(voluntario, estudo) == "pendente"
+    assert [v.codigo for v in variaveis_faltantes(voluntario.id, estudo.id)] == ["cuidador_de_dependente"]
+
+
+def test_RN26_exclusao_atendida_vence_a_pendencia_de_outro_criterio(voluntario, participacao, profissional, estudo):
+    criterio(estudo, "numero_filhos", "maior_igual", valor_numero=1)
+    criterio(estudo, "cuidador_de_dependente", "verdadeiro", tipo_regra="exclusao")
+    dar(participacao, profissional, "cuidador_de_dependente", valor_booleano=True)
+
+    assert classe(voluntario, estudo) == "inelegivel"
+
+
+def test_tela_separa_quem_esta_em_coleta_de_quem_tem_dados_de_outro_estudo(
+    voluntario, participacao, profissional, estudo
+):
+    criterio(estudo, "numero_filhos", "maior_igual", valor_numero=1)
+    dar(participacao, profissional, "sexo_ao_nascer", opcao=opcoes("sexo_ao_nascer", "feminino")[0])
+
+    [linha] = classificacao_do_estudo(estudo)["linhas"]
+    assert linha["classe"] == "pendente" and not linha["deste_estudo"]
+
+    Participacao.objects.create(voluntario=voluntario, estudo=estudo, tcle_versao="1", registrado_por=profissional)
+    [linha] = classificacao_do_estudo(estudo)["linhas"]
+    assert linha["classe"] == "em_coleta" and linha["deste_estudo"]
+
+
+def test_tela_nao_lista_o_eliminado_na_coleta(voluntario, participacao, profissional, estudo):
+    criterio(estudo, "numero_filhos", "maior_igual", valor_numero=1)
+    Participacao.objects.create(
+        voluntario=voluntario, estudo=estudo, tcle_versao="1", registrado_por=profissional,
+        situacao=Participacao.Situacao.ELIMINADA,
+    )
+
+    assert classificacao_do_estudo(estudo)["linhas"] == []
+
+
+def test_tela_diferencia_resposta_vencida_de_variavel_nunca_respondida(voluntario, participacao, profissional, estudo):
+    criterio(estudo, "numero_filhos", "maior_igual", valor_numero=1)
+    criterio(estudo, "cuidador_de_dependente", "verdadeiro")
+    dar(participacao, profissional, "sexo_ao_nascer", opcao=opcoes("sexo_ao_nascer", "feminino")[0])
+    dado = dar(participacao, profissional, "numero_filhos", valor_numero=2)
+    ValorColetado.objects.filter(pk=dado.pk).update(coletado_em=timezone.now() - timedelta(days=400))
+
+    [linha] = classificacao_do_estudo(estudo)["linhas"]
+
+    assert linha["classe"] == "pendente"
+    assert f"{variavel('numero_filhos').rotulo} (vencida)" in linha["faltam"]
+    assert variavel("cuidador_de_dependente").rotulo in linha["faltam"]
+
+
+def test_tela_mostra_todos_os_criterios_que_o_voluntario_reprova(voluntario, participacao, profissional, estudo):
+    primeiro = criterio(estudo, "numero_filhos", "maior_igual", valor_numero=1)
+    segundo = criterio(estudo, "cuidador_de_dependente", "verdadeiro")
+    dar(participacao, profissional, "numero_filhos", valor_numero=0)
+    dar(participacao, profissional, "cuidador_de_dependente", valor_booleano=False)
+
+    [linha] = classificacao_do_estudo(estudo)["linhas"]
+
+    assert linha["classe"] == "inelegivel"
+    assert linha["motivo"].startswith("Não atende: ")
+    assert primeiro.descricao in linha["motivo"] and segundo.descricao in linha["motivo"]
+
+
+def test_tela_diz_que_o_voluntario_atende_a_exclusao(voluntario, participacao, profissional, estudo):
+    regra = criterio(estudo, "cuidador_de_dependente", "verdadeiro", tipo_regra="exclusao")
+    dar(participacao, profissional, "cuidador_de_dependente", valor_booleano=True)
+
+    [linha] = classificacao_do_estudo(estudo)["linhas"]
+
+    assert linha["motivo"] == f"Atende à exclusão: {regra.descricao}"

@@ -3,6 +3,7 @@ from django.urls import path
 from .views import (
     adicionar_criterio,
     buscar_variaveis,
+    classificacao,
     configurar_criterio,
     criar,
     criterios,
@@ -23,6 +24,7 @@ urlpatterns = [
     path("novo/", criar, name="criar"),
     path("<int:id>/", detalhe, name="detalhe"),
     path("<int:id>/editar/", editar, name="editar"),
+    path("<int:id>/classificacao/", classificacao, name="classificacao"),
     path("<int:id>/criterios/", criterios, name="criterios"),
     path("<int:id>/criterios/busca/", buscar_variaveis, name="buscar_variaveis"),
     path("<int:id>/criterios/propor/", propor_variavel, name="propor_variavel"),
