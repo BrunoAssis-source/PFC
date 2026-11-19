@@ -32,6 +32,7 @@ class RegistroAuditoria(models.Model):
         DECISAO_RECUSA = "decisao_recusa", "recusa de candidato"
         DECISAO_ALTERACAO = "decisao_alteracao", "mudança de decisão sobre candidato"
         ELIMINACAO_ENCERRAMENTO = "eliminacao_encerramento", "eliminação de dados por encerramento de estudo"
+        ELIMINACAO_EXCLUSAO = "eliminacao_exclusao", "eliminação de dados por exclusão de estudo"
 
     # Nulo quando o login falhou antes de identificar um usuário válido.
     usuario = models.ForeignKey(

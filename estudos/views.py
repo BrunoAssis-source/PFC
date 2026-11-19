@@ -3,7 +3,6 @@ from django.db.models import Count
 from django.core.exceptions import PermissionDenied
 from django.http import Http404
 from django.urls import reverse
-from django.utils import timezone
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods, require_POST
 
@@ -15,7 +14,7 @@ from catalogo.busca import buscar_criterios, selecionaveis
 from catalogo.models import OpcaoDominio
 
 from voluntarios import eliminacao
-from voluntarios.pendencias import classificacao_do_estudo, sincronizar_notificacoes
+from voluntarios.pendencias import sincronizar_notificacoes
 
 from .forms import CriterioForm, EstudoForm, VariavelPropostaForm
 from .models import Criterio, Estudo
@@ -27,11 +26,11 @@ def estudo_do_pesquisador(request, id):
 
 
 def estudo_editavel(request, id):
-    # RN20: estudo encerrado não aceita inclusão, alteração nem remoção de critérios, e o servidor recusa mesmo
+    # RN20: só o rascunho aceita inclusão, alteração e remoção de critérios, e o servidor recusa mesmo
     # quando a tela não oferece o botão.
     estudo = estudo_do_pesquisador(request, id)
-    if estudo.situacao == Estudo.Situacao.ENCERRADO:
-        raise PermissionDenied("Estudo encerrado não aceita alteração de critérios.")
+    if estudo.situacao != Estudo.Situacao.RASCUNHO:
+        raise PermissionDenied("Estudo ativado ou encerrado não aceita alteração de critérios.")
     return estudo
 
 
@@ -67,15 +66,39 @@ def editar(request, id):
     if request.method == "POST" and form.is_valid():
         # Encerrar elimina dados e não tem volta, então só acontece na tela de confirmação. Aqui a situação não muda.
         encerrando = form.cleaned_data["situacao"] == Estudo.Situacao.ENCERRADO and anterior != Estudo.Situacao.ENCERRADO
+        # Ativar trava os critérios e também só acontece na tela de confirmação.
+        ativando = form.cleaned_data["situacao"] == Estudo.Situacao.ATIVO and anterior == Estudo.Situacao.RASCUNHO
         estudo = form.save(commit=False)
-        if encerrando:
+        if encerrando or ativando:
             estudo.situacao = anterior
         estudo.save()
         registrar(RegistroAuditoria.Acao.ESTUDO_EDICAO, request=request, usuario=request.user, objeto=estudo.nome)
         # Ativar o estudo pode deixar voluntários já registrados pendentes.
         sincronizar_notificacoes(estudo=estudo)
-        return redirect("estudos:encerrar" if encerrando else "estudos:detalhe", id=estudo.id)
+        destino = "estudos:encerrar" if encerrando else "estudos:ativar" if ativando else "estudos:detalhe"
+        return redirect(destino, id=estudo.id)
     return render(request, "estudos/formulario.html", {"form": form, "estudo": estudo})
+
+
+@exige_perfil(Usuario.Perfil.PESQUISADOR)
+@require_http_methods(["GET", "POST"])
+def ativar(request, id):
+    estudo = estudo_do_pesquisador(request, id)
+    if estudo.situacao != Estudo.Situacao.RASCUNHO:
+        raise PermissionDenied("Só o rascunho pode ser ativado.")
+    if request.method == "GET":
+        return render(request, "estudos/ativar.html", {"estudo": estudo, "total_criterios": estudo.criterios.count()})
+    # Sem critério o estudo ficaria vazio para sempre, porque depois de ativado os critérios não mudam.
+    if not estudo.criterios.exists():
+        messages.error(request, "Defina ao menos um critério antes de ativar o estudo.")
+        return redirect("estudos:criterios", id=estudo.id)
+    estudo.situacao = Estudo.Situacao.ATIVO
+    estudo.save(update_fields=["situacao"])
+    registrar(RegistroAuditoria.Acao.ESTUDO_EDICAO, request=request, usuario=request.user, objeto=f"{estudo.nome}. Ativado")
+    # Ativar o estudo pode deixar voluntários já registrados pendentes.
+    sincronizar_notificacoes(estudo=estudo)
+    messages.success(request, "Estudo ativado. Os critérios não podem mais ser alterados.")
+    return redirect("estudos:detalhe", id=estudo.id)
 
 
 @exige_perfil(Usuario.Perfil.PESQUISADOR)
@@ -96,6 +119,21 @@ def encerrar(request, id):
 
 
 @exige_perfil(Usuario.Perfil.PESQUISADOR)
+@require_http_methods(["GET", "POST"])
+def excluir(request, id):
+    estudo = estudo_do_pesquisador(request, id)
+    if request.method == "GET":
+        return render(request, "estudos/excluir.html", {"estudo": estudo, **eliminacao.previa(estudo)})
+    resultado = eliminacao.excluir(estudo, request.user, request)
+    messages.success(
+        request,
+        f"Estudo excluído. {resultado['eliminados']} voluntário(s) eliminado(s) e "
+        f"{resultado['mantidos']} mantido(s) por estarem em outro estudo ativo.",
+    )
+    return redirect("estudos:listar")
+
+
+@exige_perfil(Usuario.Perfil.PESQUISADOR)
 def detalhe(request, id):
     estudo = estudo_do_pesquisador(request, id)
     registrar(RegistroAuditoria.Acao.ESTUDO_LEITURA, request=request, usuario=request.user, objeto=estudo.nome)
@@ -104,38 +142,6 @@ def detalhe(request, id):
         "voluntario", "criterio_reprovado__variavel"
     ).order_by("-encerrada_em")
     return render(request, "estudos/detalhe.html", contexto)
-
-
-@exige_perfil(Usuario.Perfil.PESQUISADOR)
-def classificacao(request, id):
-    estudo = estudo_do_pesquisador(request, id)
-    registrar(RegistroAuditoria.Acao.ESTUDO_CLASSIFICACAO, request=request, usuario=request.user, objeto=estudo.nome)
-    origem = request.GET.get("origem", "")
-    if origem not in ("deste", "outros"):
-        origem = ""
-    contexto = {"estudo": estudo, "origem": origem}
-    # A view de classificação só considera estudo ativo, e estudo sem critério deixaria todos como elegíveis.
-    if estudo.situacao != Estudo.Situacao.ATIVO:
-        contexto["aviso"] = "A classificação só existe para estudo ativo."
-    elif not estudo.criterios.exists():
-        contexto["aviso"] = "Este estudo não tem critérios. Sem critérios não há o que avaliar."
-    else:
-        pagina = request.GET.get("pagina", "")
-        resultado = classificacao_do_estudo(estudo, origem, int(pagina) if pagina.isdigit() else 1)
-        rotulos = {"inelegivel": "Inelegíveis", "pendente": "Pendentes", "em_coleta": "Em coleta", "elegivel": "Elegíveis"}
-        contexto.update(
-            # A classificação não é gravada: cada consulta calcula de novo com os dados de agora.
-            calculada_em=timezone.now(),
-            grupos=[
-                (rotulos[classe], [linha for linha in resultado["linhas"] if linha["classe"] == classe])
-                for classe in rotulos
-            ],
-            totais=[(rotulos[classe], resultado["totais"][classe]) for classe in rotulos],
-            total=sum(resultado["totais"].values()),
-            pagina=resultado["pagina"],
-            paginas=resultado["paginas"],
-        )
-    return render(request, "estudos/classificacao.html", contexto)
 
 
 def variavel_selecionavel(variavel_id):
@@ -169,7 +175,7 @@ def arvore_do_catalogo():
 def criterios(request, id):
     estudo = estudo_do_pesquisador(request, id)
     contexto = contexto_regras(estudo)
-    contexto["somente_leitura"] = estudo.situacao == Estudo.Situacao.ENCERRADO
+    contexto["somente_leitura"] = estudo.situacao != Estudo.Situacao.RASCUNHO
     contexto["arvore"] = arvore_do_catalogo()
     inicial = request.GET.get("variavel", "")
     # Só variável que a tela abre de fato: um id inválido faria a configuração

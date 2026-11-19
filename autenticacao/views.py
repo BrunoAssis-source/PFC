@@ -6,8 +6,10 @@ from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView, PasswordChangeView, PasswordResetConfirmView
+from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.core.mail import EmailMultiAlternatives
+from django.db import transaction
 from django.db.models import ProtectedError, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
@@ -18,6 +20,7 @@ from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from auditoria.models import RegistroAuditoria
 from auditoria.servicos import registrar
 from estudos.painel import dados_do_painel
+from voluntarios import eliminacao
 from voluntarios.pendencias import pendentes
 
 from .forms import (
@@ -270,14 +273,58 @@ def excluir_usuario(request, usuario_id):
     if request.method == "POST":
         email = usuario.email
         try:
-            usuario.delete()
+            excluir_conta(usuario, request.user, request)
         except ProtectedError:
-            messages.error(request, "Este usuário tem estudos cadastrados e não pode ser excluído. Desative a conta pela edição.")
+            messages.error(request, MENSAGEM_CONTA_COM_VINCULO)
             return redirect("editar_usuario", usuario_id=usuario.pk)
         registrar(RegistroAuditoria.Acao.USUARIO_EXCLUSAO, request=request, usuario=request.user, objeto=email)
         messages.success(request, "Usuário excluído.")
         return redirect("usuarios")
-    return render(request, "autenticacao/usuario_exclusao.html", {"usuario": usuario})
+    return render(request, "autenticacao/usuario_exclusao.html", {"usuario": usuario, **eliminacao.previa_da_conta(usuario)})
+
+
+@login_required
+def excluir_minha_conta(request):
+    # O administrador não exclui a própria conta, como na exclusão feita por outro administrador, para o sistema não ficar sem um.
+    if request.user.is_staff:
+        raise PermissionDenied("Administradores não excluem a própria conta.")
+    usuario = request.user
+    erro = ""
+    if request.method == "POST":
+        if not usuario.check_password(request.POST.get("senha", "")):
+            erro = "Senha incorreta."
+        else:
+            email = usuario.email
+            try:
+                excluir_conta(usuario, usuario, request)
+            except ProtectedError:
+                erro = MENSAGEM_CONTA_COM_VINCULO
+            else:
+                # flush evita o registro de logout, que apontaria para uma conta que já não existe.
+                request.session.flush()
+                registrar(RegistroAuditoria.Acao.USUARIO_EXCLUSAO, request=request, objeto=email)
+                messages.success(request, "Sua conta foi excluída.")
+                return redirect("login")
+    return render(
+        request, "autenticacao/minha_conta_exclusao.html", {"erro": erro, **eliminacao.previa_da_conta(usuario)}
+    )
+
+
+MENSAGEM_CONTA_COM_VINCULO = (
+    "Esta conta ainda tem vínculo com dados em uso por outro estudo e não pode ser excluída. Desative a conta pela edição."
+)
+
+
+def excluir_conta(usuario, executor, request):
+    """Exclui os estudos do usuário e depois a conta, numa transação só.
+
+    Se algum registro em uso por outro estudo ainda apontar para a conta, o ProtectedError desfaz tudo,
+    inclusive os estudos já excluídos.
+    """
+    with transaction.atomic():
+        for estudo in usuario.estudos.all():
+            eliminacao.excluir(estudo, executor, request)
+        usuario.delete()
 
 
 def politica_privacidade(request):

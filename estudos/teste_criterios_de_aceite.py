@@ -14,12 +14,11 @@ def endereco(nome, estudo, *args):
 
 def test_RF04_CA01_estudo_cadastrado_com_a_situacao_padrao_aparece_como_rascunho(cliente):
     formulario = cliente.get(reverse("estudos:criar")).context["form"]
-    padrao = formulario["situacao"].value()
-    assert padrao == Estudo.Situacao.RASCUNHO
+    assert "situacao" not in formulario.fields
 
     cliente.post(
         reverse("estudos:criar"),
-        {"nome": "Estudo novo", "condicao": "Condição", "descricao": "", "participantes_necessarios": "", "situacao": padrao},
+        {"nome": "Estudo novo", "condicao": "Condição", "descricao": "", "participantes_necessarios": ""},
     )
 
     lista = cliente.get(reverse("estudos:listar"))

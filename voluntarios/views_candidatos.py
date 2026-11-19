@@ -1,14 +1,18 @@
 from django.contrib import messages
+from django.http import HttpResponse
 from django.shortcuts import redirect, render
+from django.utils.text import slugify
 from django.utils.http import urlencode
 from django.views.decorators.http import require_POST
 
+from auditoria.models import RegistroAuditoria
+from auditoria.servicos import registrar
 from autenticacao.models import Usuario
 from autenticacao.permissoes import exige_perfil
 from estudos.models import Estudo
 from estudos.views import estudo_do_pesquisador
 
-from . import decisoes
+from . import decisoes, exportacao
 
 SITUACOES = [("elegivel", "Elegíveis"), ("pendente", "Pendentes"), ("em_coleta", "Em coleta"), ("inelegivel", "Inelegíveis")]
 
@@ -44,7 +48,7 @@ def candidatos(request, id):
     if filtros["decisao"] not in ("sem", "incluido", "recusado"):
         filtros["decisao"] = ""
     pagina = request.GET.get("pagina", "")
-    contexto = {"estudo": estudo, "filtros": filtros, "situacoes": SITUACOES}
+    contexto = {"estudo": estudo, "filtros": filtros}
     if estudo.situacao == Estudo.Situacao.RASCUNHO:
         contexto["aviso"] = "Os candidatos aparecem quando o estudo estiver ativo."
     elif estudo.situacao == Estudo.Situacao.ATIVO and not estudo.criterios.exists():
@@ -54,6 +58,7 @@ def candidatos(request, id):
         consulta = urlencode(
             [("situacao", s) for s in filtros["situacoes"]] + [(k, v) for k, v in filtros.items() if v and k != "situacoes"]
         )
+        contexto["situacoes"] = [(valor, rotulo, resultado["totais"][valor]) for valor, rotulo in SITUACOES] if "totais" in resultado else []
         contexto.update(resultado, somente_leitura=estudo.situacao != Estudo.Situacao.ATIVO, consulta=consulta)
     return render(request, "estudos/candidatos.html", contexto)
 
@@ -68,3 +73,14 @@ def incluir(request, id):
 @require_POST
 def recusar(request, id):
     return _decidir(request, id, decisoes.recusar)
+
+
+@exige_perfil(Usuario.Perfil.PESQUISADOR)
+def exportar(request, id):
+    estudo = estudo_do_pesquisador(request, id)
+    # Sem ação própria na auditoria para não criar migration. O prefixo no objeto distingue da leitura comum.
+    registrar(RegistroAuditoria.Acao.ESTUDO_LEITURA, request=request, usuario=request.user, objeto=f"exportação: {estudo.nome}")
+    resposta = HttpResponse(content_type="text/csv; charset=utf-8")
+    resposta["Content-Disposition"] = f'attachment; filename="{slugify(estudo.nome) or "estudo"}.csv"'
+    exportacao.escrever_csv(resposta, estudo)
+    return resposta

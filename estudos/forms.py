@@ -51,18 +51,33 @@ class EstudoForm(EstiloBootstrapMixin, forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        if self.instance.situacao == Estudo.Situacao.ENCERRADO:
+        if not self.instance.pk:
+            # Todo estudo nasce como rascunho. A ativação passa pela tela de confirmação.
+            del self.fields["situacao"]
+        elif self.instance.situacao == Estudo.Situacao.ENCERRADO:
             self.fields["situacao"].choices = [(Estudo.Situacao.ENCERRADO, Estudo.Situacao.ENCERRADO.label)]
             self.fields["situacao"].help_text = "Estudo encerrado não volta a ficar ativo, porque os dados dos voluntários já foram eliminados."
+        elif self.instance.situacao == Estudo.Situacao.ATIVO:
+            self.fields["situacao"].choices = [
+                (Estudo.Situacao.ATIVO, Estudo.Situacao.ATIVO.label),
+                (Estudo.Situacao.ENCERRADO, Estudo.Situacao.ENCERRADO.label),
+            ]
+            self.fields["situacao"].help_text = (
+                "Estudo ativado não volta a ser rascunho. Ao escolher Encerrado, o sistema pede uma confirmação e elimina "
+                "os dados dos voluntários sem outro estudo ativo."
+            )
         else:
             self.fields["situacao"].help_text = (
-                "Ao escolher Encerrado, o sistema pede uma confirmação e elimina os dados dos voluntários sem outro estudo ativo."
+                "Ao escolher Ativo, o sistema pede uma confirmação e os critérios deixam de poder ser alterados. "
+                "Ao escolher Encerrado, pede outra confirmação e elimina os dados dos voluntários sem outro estudo ativo."
             )
 
     def clean_situacao(self):
         situacao = self.cleaned_data["situacao"]
         if self.instance.situacao == Estudo.Situacao.ENCERRADO and situacao != Estudo.Situacao.ENCERRADO:
             raise forms.ValidationError("Estudo encerrado não volta a ficar ativo, porque os dados dos voluntários já foram eliminados.")
+        if self.instance.situacao == Estudo.Situacao.ATIVO and situacao == Estudo.Situacao.RASCUNHO:
+            raise forms.ValidationError("Estudo ativado não volta a ser rascunho, porque os critérios já não podem mudar.")
         return situacao
 
 

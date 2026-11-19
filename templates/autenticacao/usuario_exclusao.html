@@ -28,6 +28,13 @@
     <h2 class="painel-secao-titulo mb-2">O que acontece</h2>
     <ul class="exclusao-efeitos">
         <li>A conta e o acesso ao sistema são removidos.</li>
+        {% if estudos %}
+        <li>
+            {{ estudos }} estudo{{ estudos|pluralize }} da pessoa {{ estudos|pluralize:"é,são" }} excluído{{ estudos|pluralize }}.
+            {{ eliminados }} voluntário{{ eliminados|pluralize }} {{ eliminados|pluralize:"é,são" }} eliminado{{ eliminados|pluralize }}
+            e {{ mantidos }} permanece{{ mantidos|pluralize:",m" }} por estar{{ mantidos|pluralize:"em" }} em outro estudo ativo.
+        </li>
+        {% endif %}
         <li>Os registros de auditoria dessa pessoa continuam, sem o vínculo com a conta.</li>
         <li>Para apenas impedir o acesso, desative a conta na tela de edição.</li>
     </ul>

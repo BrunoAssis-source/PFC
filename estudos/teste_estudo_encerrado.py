@@ -64,13 +64,21 @@ def test_RN20_tela_abre_para_consulta_sem_botoes_de_alteracao(cliente, encerrado
     assert pagina.count("disabled") >= 1
 
 
-@pytest.mark.parametrize("situacao", [Estudo.Situacao.RASCUNHO, Estudo.Situacao.ATIVO])
-def test_RN20_rascunho_e_ativo_continuam_aceitando_alteracao(cliente, estudo, situacao):
-    estudo.situacao = situacao
-    estudo.save()
+def test_RN20_rascunho_continua_aceitando_alteracao(cliente, estudo):
     resposta = cliente.post(
         endereco("adicionar_criterio", estudo, variavel("numero_filhos").id),
         {"tipo_regra": "inclusao", "operador": "maior_igual", "valor_numero": "1"},
     )
     assert resposta.status_code == 200
     assert Criterio.objects.count() == 1
+
+
+def test_RN20_servidor_recusa_incluir_criterio_em_estudo_ativado(cliente, estudo):
+    estudo.situacao = Estudo.Situacao.ATIVO
+    estudo.save()
+    resposta = cliente.post(
+        endereco("adicionar_criterio", estudo, variavel("numero_filhos").id),
+        {"tipo_regra": "inclusao", "operador": "maior_igual", "valor_numero": "1"},
+    )
+    assert resposta.status_code == 403
+    assert Criterio.objects.count() == 0

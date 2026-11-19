@@ -10,7 +10,7 @@ from estudos.models import Estudo
 
 from .eliminacao import apagar_dados, tem_outro_estudo_ativo
 from .models import DecisaoCandidato, Participacao, Voluntario
-from .pendencias import _consultar, classificacao
+from .pendencias import _consultar, classificacao, explicar
 
 Decisao = DecisaoCandidato.Decisao
 Acao = RegistroAuditoria.Acao
@@ -41,7 +41,6 @@ SELECT * FROM base
 WHERE (%s = '' OR deste = (%s = 'deste'))
   AND (%s = '' OR COALESCE(decisao, 'sem') = %s)
   AND codigo_hmac LIKE %s
-  AND classe = ANY(%s::text[])
 """
 
 
@@ -77,19 +76,22 @@ def candidatos(estudo, situacoes=("elegivel",), origem="", decisao="", codigo=""
     # O código só tem hexadecimal minúsculo. Outro caractere não casa com ninguém, e % e _ não viram curinga.
     prefixo = codigo.strip().lower()
     padrao = (prefixo if re.fullmatch("[0-9a-f]*", prefixo) else "!") + "%"
-    filtro = [
-        estudo.id, origem, origem, decisao, decisao, padrao, list(situacoes) or ["elegivel"],
-    ]
-    total = _consultar(f"SELECT count(*) FROM ({BASE}) t", filtro)[0][0]
+    filtro = [estudo.id, origem, origem, decisao, decisao, padrao]
+    # A contagem por situação respeita os outros filtros e ignora o de situação, para mostrar o que os outros marcadores trariam.
+    totais = dict(_consultar(f"SELECT classe, count(*) FROM ({BASE}) t GROUP BY classe", filtro))
+    escolhidas = list(situacoes) or ["elegivel"]
+    filtro.append(escolhidas)
+    total = sum(totais.get(s, 0) for s in escolhidas)
     paginas = max(1, -(-total // por_pagina))
     pagina = min(max(pagina, 1), paginas)
     linhas = _consultar(
-        f"SELECT voluntario_id, codigo_hmac, classe, deste, decisao FROM ({BASE}) t "
+        f"SELECT voluntario_id, codigo_hmac, classe, deste, decisao FROM ({BASE}) t WHERE classe = ANY(%s::text[]) "
         "ORDER BY array_position(%s::text[], classe), codigo_hmac LIMIT %s OFFSET %s",
         filtro + [list(SITUACOES), por_pagina, (pagina - 1) * por_pagina],
     )
+    explicacao = explicar(estudo, [(voluntario_id, codigo_hmac) for voluntario_id, codigo_hmac, *_ in linhas])
     resultado.update(
-        total=total, pagina=pagina, paginas=paginas,
+        total=total, pagina=pagina, paginas=paginas, totais={s: totais.get(s, 0) for s in SITUACOES},
         linhas=[
             {
                 "voluntario_id": voluntario_id,
@@ -97,6 +99,7 @@ def candidatos(estudo, situacoes=("elegivel",), origem="", decisao="", codigo=""
                 "classe": classe_atual,
                 "origem": "deste" if deste else "outros",
                 "decisao": decisao_gravada,
+                **explicacao[voluntario_id],
                 # A decisão não muda sozinha. Quem deixou de ser elegível segue incluído, com este aviso.
                 "mudou_desde_a_inclusao": decisao_gravada == Decisao.INCLUIDO and classe_atual != "elegivel",
             }

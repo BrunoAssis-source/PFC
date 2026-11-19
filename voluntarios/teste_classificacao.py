@@ -193,10 +193,12 @@ def test_participacao_em_coleta_nao_muda_a_classificacao(voluntario, participaca
 def test_so_estudos_ativos_entram(voluntario, participacao, profissional, estudo):
     criterio(estudo, "numero_filhos", "maior_igual", valor_numero=1)
     dar(participacao, profissional, "sexo_ao_nascer", opcao=opcoes("sexo_ao_nascer", "feminino")[0])
-    for situacao in (Estudo.Situacao.RASCUNHO, Estudo.Situacao.ENCERRADO):
-        estudo.situacao = situacao
-        estudo.save()
-        assert (voluntario.id, estudo.id) not in classificacao()
+    rascunho = Estudo.objects.create(nome="Rascunho", condicao="Condição", pesquisador=estudo.pesquisador)
+    criterio(rascunho, "numero_filhos", "maior_igual", valor_numero=1)
+    estudo.situacao = Estudo.Situacao.ENCERRADO
+    estudo.save()
+    for fora_de_ativo in (rascunho, estudo):
+        assert (voluntario.id, fora_de_ativo.id) not in classificacao()
         assert pendentes() == []
 
 

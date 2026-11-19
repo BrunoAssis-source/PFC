@@ -1,0 +1,33 @@
+{% extends "painel.html" %}
+{% block title %}Ativar estudo | UniData{% endblock %}
+{% block content %}
+<div class="painel-cabecalho">
+    <div>
+        <p class="painel-rotulo">{{ estudo.nome }}</p>
+        <h1 class="painel-titulo">Ativar estudo</h1>
+    </div>
+</div>
+
+{% if not total_criterios %}
+<div class="alert alert-warning" role="alert">
+    Este estudo ainda não tem critérios. Defina ao menos um antes de ativar, porque depois da ativação não será mais possível editá-los.
+</div>
+<div class="painel-formulario-acoes">
+    <a class="painel-acao" href="{% url 'estudos:criterios' estudo.id %}">Definir critérios</a>
+    <a class="painel-voltar" href="{% url 'estudos:detalhe' estudo.id %}">Cancelar</a>
+</div>
+{% else %}
+<div class="alert alert-danger" role="alert">Esta ação não tem volta.</div>
+
+<p class="painel-abertura">
+    Depois de ativado, você não poderá mais editar os critérios do estudo (incluir, alterar ou remover), e ele não volta a ser rascunho.
+    O estudo tem {{ total_criterios }} critério{{ total_criterios|pluralize }} neste momento. Confira antes de continuar.
+</p>
+
+<form method="post" class="painel-formulario-acoes">
+    {% csrf_token %}
+    <button class="painel-acao" type="submit">Sim, ativar o estudo</button>
+    <a class="painel-voltar" href="{% url 'estudos:detalhe' estudo.id %}">Cancelar</a>
+</form>
+{% endif %}
+{% endblock %}

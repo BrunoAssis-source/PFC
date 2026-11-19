@@ -1,0 +1,40 @@
+{% extends "painel.html" %}
+{% block title %}Excluir minha conta | UniData{% endblock %}
+{% block content %}
+<div class="painel-cabecalho">
+    <div>
+        <p class="painel-rotulo">Sua conta</p>
+        <h1 class="painel-titulo">Excluir minha conta</h1>
+    </div>
+</div>
+
+<form class="painel-formulario" method="post">
+    {% csrf_token %}
+    <div class="alert alert-danger" role="alert">Esta ação não pode ser desfeita.</div>
+    {% if erro %}<div class="alert alert-warning" role="alert">{{ erro }}</div>{% endif %}
+
+    <h2 class="painel-secao-titulo mb-2">O que acontece</h2>
+    <ul class="exclusao-efeitos">
+        <li>A conta e o acesso ao sistema são removidos.</li>
+        {% if estudos %}
+        <li>
+            {{ estudos }} estudo{{ estudos|pluralize }} seu{{ estudos|pluralize }} {{ estudos|pluralize:"é,são" }} excluído{{ estudos|pluralize }}.
+            {{ eliminados }} voluntário{{ eliminados|pluralize }} {{ eliminados|pluralize:"é,são" }} eliminado{{ eliminados|pluralize }}
+            e {{ mantidos }} permanece{{ mantidos|pluralize:",m" }} por estar{{ mantidos|pluralize:"em" }} em outro estudo ativo.
+        </li>
+        {% endif %}
+        <li>Os registros de auditoria continuam, sem o vínculo com a conta.</li>
+        <li>Para apenas impedir o acesso, peça a um administrador que desative a conta.</li>
+    </ul>
+
+    <div class="mb-3">
+        <label class="form-label" for="senha-confirmacao">Sua senha</label>
+        <input class="form-control" id="senha-confirmacao" name="senha" type="password" autocomplete="current-password" required>
+    </div>
+
+    <div class="painel-formulario-acoes">
+        <button class="painel-acao perigo" type="submit">Excluir definitivamente</button>
+        <a class="painel-voltar" href="{% url 'meu_perfil' %}">Cancelar</a>
+    </div>
+</form>
+{% endblock %}

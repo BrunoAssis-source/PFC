@@ -37,10 +37,10 @@
     <form method="get" class="row g-2 align-items-end mb-3" aria-label="Filtros">
         <fieldset class="col-auto">
             <legend class="form-label small mb-0">Situação</legend>
-            {% for valor, rotulo in situacoes %}
+            {% for valor, rotulo, quantidade in situacoes %}
                 <div class="form-check form-check-inline">
                     <input class="form-check-input" type="checkbox" id="s-{{ valor }}" name="situacao" value="{{ valor }}" {% if valor in filtros.situacoes %}checked{% endif %}>
-                    <label class="form-check-label small" for="s-{{ valor }}">{{ rotulo }}</label>
+                    <label class="form-check-label small" for="s-{{ valor }}">{{ rotulo }} ({{ quantidade }})</label>
                 </div>
             {% endfor %}
         </fieldset>
@@ -77,6 +77,12 @@
     {% else %}
     <form method="post" id="decisao">
         {% csrf_token %}
+        {% if not somente_leitura %}
+        <label class="form-check mb-2">
+            <input type="checkbox" class="form-check-input" id="marcar-todos">
+            <span class="form-check-label small">Selecionar todos desta página</span>
+        </label>
+        {% endif %}
         <div class="painel-lista">
             {% for linha in linhas %}
             <label class="painel-linha">
@@ -84,21 +90,38 @@
                     <input type="checkbox" class="form-check-input" name="voluntarios" value="{{ linha.voluntario_id }}" aria-label="Selecionar {{ linha.codigo }}">
                 {% endif %}
                 <span class="painel-linha-texto">
-                    <strong>Voluntário {{ linha.codigo }}</strong>
+                    <span class="cand-titulo">
+                        <strong>Voluntário {{ linha.codigo }}</strong>
+                        {% if not somente_leitura %}<span class="cand-selo {{ linha.classe }}">{% if linha.classe == "elegivel" %}Elegível{% elif linha.classe == "pendente" %}Pendente{% elif linha.classe == "em_coleta" %}Em coleta{% else %}Inelegível{% endif %}</span>{% endif %}
+                    </span>
                     <span class="painel-linha-sub">
                         {% if somente_leitura %}
                             Classificação na decisão: {{ linha.classe }}. Decidido em {{ linha.decidido_em|date:"d/m/Y H:i" }}.
                         {% else %}
-                            {% if linha.classe == "elegivel" %}Elegível{% elif linha.classe == "pendente" %}Pendente, falta dado{% elif linha.classe == "em_coleta" %}Em coleta{% else %}Inelegível{% endif %},
-                            {% if linha.origem == "deste" %}coletado neste estudo{% else %}de outro estudo{% endif %}.
+                            {% if linha.origem == "deste" %}Coletado neste estudo{% else %}Vindo de outro estudo{% endif %}.
+                            {% if linha.motivo %}{{ linha.motivo }}.{% endif %}
                             {% if linha.mudou_desde_a_inclusao %}<span class="text-danger">Situação mudou desde a inclusão.</span>{% endif %}
                         {% endif %}
                     </span>
+                    {% if linha.faltam and linha.classe != "elegivel" and not somente_leitura %}
+                        <button type="button" class="cand-pendencias" data-abrir="p-{{ linha.voluntario_id }}">{{ linha.faltam|length }} pendência{{ linha.faltam|length|pluralize }}, ver quais</button>
+                    {% endif %}
                 </span>
-                <span class="painel-linha-contagem">
+                <span class="cand-decisao {{ linha.decisao }}">
                     {% if linha.decisao == "incluido" %}Incluído{% elif linha.decisao == "recusado" %}Recusado{% else %}Sem decisão{% endif %}
                 </span>
             </label>
+            {% if linha.faltam and linha.classe != "elegivel" and not somente_leitura %}
+            <dialog id="p-{{ linha.voluntario_id }}" class="border rounded-3 p-4" style="max-width:32rem">
+                <h2 class="h5">Voluntário {{ linha.codigo }}</h2>
+                <p class="small text-muted mb-2">Dados que faltam ou não têm fonte confirmada para este estudo:</p>
+                <ul class="mb-3">
+                    {% for item in linha.faltam %}<li>{{ item }}</li>{% endfor %}
+                </ul>
+                {% if linha.motivo %}<p class="small mb-3">{{ linha.motivo }}.</p>{% endif %}
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-fechar>Fechar</button>
+            </dialog>
+            {% endif %}
             {% endfor %}
         </div>
         {% if not somente_leitura %}
@@ -124,4 +147,29 @@
     </nav>
     {% endif %}
 {% endif %}
+<script>
+    document.querySelectorAll("[data-abrir]").forEach(function (b) {
+        b.addEventListener("click", function () {
+            document.getElementById(b.dataset.abrir).showModal();
+        });
+    });
+    document.querySelectorAll("[data-fechar]").forEach(function (b) {
+        b.addEventListener("click", function () { b.closest("dialog").close(); });
+    });
+    (function () {
+        var todos = document.getElementById("marcar-todos");
+        if (!todos) return;
+        var caixas = document.querySelectorAll('#decisao input[name="voluntarios"]');
+        function sincronizar() {
+            var marcadas = document.querySelectorAll('#decisao input[name="voluntarios"]:checked').length;
+            todos.checked = marcadas === caixas.length;
+            todos.indeterminate = marcadas > 0 && marcadas < caixas.length;
+        }
+        todos.addEventListener("change", function () {
+            caixas.forEach(function (c) { c.checked = todos.checked; });
+            sincronizar();
+        });
+        caixas.forEach(function (c) { c.addEventListener("change", sincronizar); });
+    })();
+</script>
 {% endblock %}

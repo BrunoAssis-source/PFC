@@ -6,6 +6,7 @@ from django.urls import reverse
 
 from auditoria.models import RegistroAuditoria
 from catalogo.models import Variavel
+from estudos.models import Estudo
 from voluntarios import cpf
 from voluntarios.coleta import proxima_variavel, respostas_pendentes
 from voluntarios.models import Participacao, PendenciaNotificada, ValorColetado, ValorSensivel, Voluntario
@@ -256,29 +257,30 @@ def test_RN29_pendencia_resolvida_e_que_volta_a_surgir_avisa_de_novo(cliente, ba
     assert len([m for m in mail.outbox if "Nova pendência" in m.subject]) == 2
 
 
-def test_RN29_criterio_novo_em_estudo_ativo_pela_tela_dispara_o_aviso(cliente_pesquisadora, base):
-    voluntario, estudo, _ = base
+def rascunho_com_criterios(pesquisadora):
+    novo = Estudo.objects.create(nome="Estudo a ativar", condicao="Condição", pesquisador=pesquisadora)
+    criterio(novo, "sexo_ao_nascer", "e", opcoes("sexo_ao_nascer", "feminino"))
+    criterio(novo, "renda_familiar_mensal", "menor", valor_numero=3000)
+    return novo
+
+
+def test_RN29_ativar_o_estudo_dispara_o_aviso(cliente_pesquisadora, base, pesquisadora):
+    novo = rascunho_com_criterios(pesquisadora)
     mail.outbox.clear()
 
-    resposta = cliente_pesquisadora.post(
-        reverse("estudos:adicionar_criterio", args=[estudo.id, Variavel.objects.get(codigo="numero_filhos").id]),
-        {"tipo_regra": "inclusao", "operador": "maior_igual", "valor_numero": "1"},
-    )
+    resposta = cliente_pesquisadora.post(reverse("estudos:ativar", args=[novo.id]))
 
-    assert resposta.status_code == 200
-    assert len(mail.outbox) == 1 and estudo.nome in mail.outbox[0].subject
+    assert resposta.status_code == 302
+    assert len(mail.outbox) == 1 and novo.nome in mail.outbox[0].subject
 
 
-def test_RN29_falha_no_envio_nao_quebra_a_operacao_do_pesquisador(cliente_pesquisadora, base, monkeypatch, caplog):
-    voluntario, estudo, _ = base
+def test_RN29_falha_no_envio_nao_quebra_a_ativacao_do_estudo(cliente_pesquisadora, base, pesquisadora, monkeypatch, caplog):
+    novo = rascunho_com_criterios(pesquisadora)
     monkeypatch.setattr("django.core.mail.message.EmailMessage.send", lambda self, *a, **k: (_ for _ in ()).throw(OSError("sem rede")))
 
-    resposta = cliente_pesquisadora.post(
-        reverse("estudos:adicionar_criterio", args=[estudo.id, Variavel.objects.get(codigo="numero_filhos").id]),
-        {"tipo_regra": "inclusao", "operador": "maior_igual", "valor_numero": "1"},
-    )
+    resposta = cliente_pesquisadora.post(reverse("estudos:ativar", args=[novo.id]))
 
-    assert resposta.status_code == 200
+    assert resposta.status_code == 302
     assert "Falha ao enviar o aviso" in caplog.text
 
 

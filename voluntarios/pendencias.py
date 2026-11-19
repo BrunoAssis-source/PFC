@@ -121,28 +121,9 @@ WITH base AS (
 """
 
 
-def classificacao_do_estudo(estudo, origem="", pagina=1, por_pagina=POR_PAGINA):
-    """Uma página da tela de classificação do pesquisador, com a contagem por situação.
-
-    A contagem e a página saem do banco, então o custo de memória é o de uma página, e os critérios reprovados e as
-    variáveis faltantes são buscados só para os voluntários dela. Origem "deste" mantém quem tem participação neste
-    estudo e "outros" quem chegou pelos dados registrados em outro estudo.
-    """
-    filtro = [estudo.id, origem, origem]
-    totais = dict(_consultar(BASE_DA_TELA + "SELECT classe, count(*) FROM base GROUP BY classe", filtro))
-    paginas = max(1, -(-sum(totais.values()) // por_pagina))
-    pagina = min(max(pagina, 1), paginas)
-    pagina_do_banco = _consultar(
-        BASE_DA_TELA
-        + "SELECT voluntario_id, codigo_hmac, deste, classe FROM base "
-        "ORDER BY array_position(%s::text[], classe), codigo_hmac LIMIT %s OFFSET %s",
-        filtro + [list(SITUACOES), por_pagina, (pagina - 1) * por_pagina],
-    )
-    resultado = {"linhas": [], "totais": {s: totais.get(s, 0) for s in SITUACOES}, "pagina": pagina, "paginas": paginas}
-    if not pagina_do_banco:
-        return resultado
-
-    ids = [v for v, *_ in pagina_do_banco]
+def explicar(estudo, pares):
+    """Motivo da inelegibilidade e variáveis faltantes de cada par (voluntario_id, codigo_hmac), em consultas em lote."""
+    ids = [v for v, _ in pares]
     reprovados = {}
     for voluntario, criterio in _consultar(
         "SELECT voluntario_id, criterio_id FROM voluntarios_avaliacao_par "
@@ -169,7 +150,7 @@ def classificacao_do_estudo(estudo, origem="", pagina=1, por_pagina=POR_PAGINA):
     for modelo in (ValorColetado, ValorSensivel):
         respondidas.update(
             modelo.objects.filter(
-                codigo_voluntario__in=[codigo for _, codigo, *_ in pagina_do_banco], variavel_id__in=variaveis
+                codigo_voluntario__in=[codigo for _, codigo in pares], variavel_id__in=variaveis
             ).values_list("codigo_voluntario", "variavel_id")
         )
 
@@ -190,13 +171,39 @@ def classificacao_do_estudo(estudo, origem="", pagina=1, por_pagina=POR_PAGINA):
         )
         return [f"{f.rotulo} (vencida)" if (codigo, f.id) in respondidas else f.rotulo for f in ordenadas]
 
+    return {
+        voluntario: {"motivo": motivo(voluntario), "faltam": faltam(voluntario, codigo)} for voluntario, codigo in pares
+    }
+
+
+def classificacao_do_estudo(estudo, origem="", pagina=1, por_pagina=POR_PAGINA):
+    """Uma página da tela de classificação do pesquisador, com a contagem por situação.
+
+    A contagem e a página saem do banco, então o custo de memória é o de uma página, e os critérios reprovados e as
+    variáveis faltantes são buscados só para os voluntários dela. Origem "deste" mantém quem tem participação neste
+    estudo e "outros" quem chegou pelos dados registrados em outro estudo.
+    """
+    filtro = [estudo.id, origem, origem]
+    totais = dict(_consultar(BASE_DA_TELA + "SELECT classe, count(*) FROM base GROUP BY classe", filtro))
+    paginas = max(1, -(-sum(totais.values()) // por_pagina))
+    pagina = min(max(pagina, 1), paginas)
+    pagina_do_banco = _consultar(
+        BASE_DA_TELA
+        + "SELECT voluntario_id, codigo_hmac, deste, classe FROM base "
+        "ORDER BY array_position(%s::text[], classe), codigo_hmac LIMIT %s OFFSET %s",
+        filtro + [list(SITUACOES), por_pagina, (pagina - 1) * por_pagina],
+    )
+    resultado = {"linhas": [], "totais": {s: totais.get(s, 0) for s in SITUACOES}, "pagina": pagina, "paginas": paginas}
+    if not pagina_do_banco:
+        return resultado
+
+    explicacao = explicar(estudo, [(v, codigo) for v, codigo, *_ in pagina_do_banco])
     resultado["linhas"] = [
         {
             "codigo": codigo[:8],
             "classe": classe,
             "deste_estudo": deste,
-            "motivo": motivo(voluntario),
-            "faltam": faltam(voluntario, codigo),
+            **explicacao[voluntario],
         }
         for voluntario, codigo, deste, classe in pagina_do_banco
     ]

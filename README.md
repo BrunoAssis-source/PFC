@@ -12,7 +12,7 @@ Autor: Bruno de Faria Assis.
 
 ## Estado atual
 
-Estão implementados a autenticação com controle de acesso por perfil, o catálogo de variáveis, o cadastro de estudos e critérios, a identificação de voluntários por CPF, a coleta com verificação eliminatória, a tela de pendências do profissional, a classificação de elegibilidade (RF10, no banco e na tela do pesquisador) e o dashboard do pesquisador na tela Início.
+Estão implementados a autenticação com controle de acesso por perfil, o catálogo de variáveis, o cadastro de estudos e critérios, a identificação de voluntários por CPF, a coleta com verificação eliminatória, a tela de pendências do profissional, a classificação de elegibilidade (RF10, no banco e na tela de candidatos do pesquisador) e o dashboard do pesquisador na tela Início.
 
 Situação dos requisitos do documento:
 
@@ -22,7 +22,7 @@ Situação dos requisitos do documento:
 | RF04 a RF07 (estudos e critérios) | Implementados |
 | RF08 (identificar voluntário) | Implementado, com a conferência do TCLE antes da coleta, que o documento não prevê |
 | RF09 (coleta com verificação eliminatória) | Implementado |
-| RF10 (classificação) | Implementado, com a view SQL e a tela do pesquisador. A decisão sobre os candidatos fica no RF12 |
+| RF10 (classificação) | Implementado, com a view SQL e a tela de candidatos do pesquisador. A decisão sobre os candidatos fica no RF12 |
 | RF11 (pendências) | Implementado |
 | RF12 (decisão do pesquisador) | Implementado |
 | RF13 (eliminação de dados) | Implementado, sem o prazo por estudo da RN33, que fica como trabalho futuro |
@@ -234,6 +234,6 @@ Também há testes para editar critério (tela preenchida por tipo, gravação, 
 
 Cada critério de aceite de RF01 a RF09 tem um teste com o código no nome, por exemplo `test_RF06_CA02_...`, nos arquivos `teste_criterios_de_aceite.py` de cada app e em `estudos/teste_criterio_data.py`. O `RF01_CA03` confere que o cadastro leva à tela de confirmação do email e que a conta fica inativa até a confirmação. A verificação de elegibilidade tem testes por operador, a classificação por caso da RN26, e a coleta por estado, por acesso e pela mensagem neutra de eliminação. Os dados dos testes são todos sintéticos, com CPFs que só passam na conta dos dígitos verificadores.
 
-A tela de classificação tem testes em `voluntarios/teste_tela_classificacao.py`: acesso (visitante, profissional, estudo de outra pesquisadora), avisos de estudo inativo e sem critérios, cada voluntário no bloco do seu estado, filtro de origem, ausência de CPF na página, número de consultas constante, paginação e data do cálculo. Os casos da RN26 estão em `voluntarios/teste_classificacao.py`, incluindo a exclusão sem valor, que deixa o voluntário pendente.
+Os casos da RN26 estão em `voluntarios/teste_classificacao.py`, incluindo a exclusão sem valor, que deixa o voluntário pendente.
 
 Ainda sem testes: cadastro, login, confirmação de email, gestão de usuários e as telas de lista e edição de estudo. A avaliação de um participante contra os critérios depende do cadastro de voluntários, que não existe.

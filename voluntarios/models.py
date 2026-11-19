@@ -121,7 +121,8 @@ class ValorBase(models.Model):
     opcao = models.ForeignKey(OpcaoDominio, null=True, blank=True, on_delete=models.PROTECT, related_name="+")
     valor_booleano = models.BooleanField("sim ou não", null=True, blank=True)
     fonte = models.CharField("fonte", max_length=12, choices=Fonte.choices)
-    participacao = models.ForeignKey(Participacao, on_delete=models.PROTECT, related_name="+")
+    # Fica vazio quando o estudo que coletou o valor é excluído e o voluntário permanece por outro estudo ativo.
+    participacao = models.ForeignKey(Participacao, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     coletado_em = models.DateTimeField("coletado em", auto_now_add=True)
     coletado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
 

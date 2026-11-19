@@ -61,7 +61,7 @@
 
     <section class="criterios-bloco" id="configuracao" aria-label="Configuração do critério" aria-live="polite">
         {% if somente_leitura %}
-            <p class="config-inicial">Estudo encerrado: os critérios podem ser consultados, mas não alterados.</p>
+            <p class="config-inicial">Estudo {% if estudo.situacao == "ativo" %}ativado{% else %}encerrado{% endif %}: os critérios podem ser consultados, mas não alterados.</p>
         {% else %}
             <p class="config-inicial">Escolha uma variável no catálogo para definir a condição.</p>
         {% endif %}

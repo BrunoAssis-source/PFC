@@ -395,10 +395,9 @@ def test_tela_de_estudo_encerrado_e_so_leitura(cliente, pesquisadora, estudo, el
 
 
 def test_tela_de_rascunho_avisa_que_ainda_nao_ha_candidatos(cliente, estudo):
-    estudo.situacao = Estudo.Situacao.RASCUNHO
-    estudo.save()
+    rascunho = Estudo.objects.create(nome="Rascunho", condicao="Condição", pesquisador=estudo.pesquisador)
 
-    assert "quando o estudo estiver ativo" in cliente.get(endereco("candidatos", estudo)).content.decode()
+    assert "quando o estudo estiver ativo" in cliente.get(endereco("candidatos", rascunho)).content.decode()
 
 
 def test_tela_nega_profissional_e_outro_pesquisador(client, profissional, estudo):
@@ -427,3 +426,17 @@ def test_tela_abre_so_com_elegiveis_e_marcar_dois_filtros_mostra_os_dois(cliente
 
     assert pendente.codigo_hmac[:8] not in padrao
     assert elegivel.codigo_hmac[:8] in ampliado and pendente.codigo_hmac[:8] in ampliado
+
+
+def test_tela_mostra_o_motivo_e_o_que_falta_ao_lado_do_candidato(cliente, estudo, elegivel, pendente, inelegivel):
+    resposta = cliente.get(endereco("candidatos", estudo), {"situacao": ["pendente", "inelegivel"]})
+
+    texto = resposta.content.decode()
+    assert "Não atende" in texto and "Falta:" in texto
+
+
+def test_contagem_por_situacao_ignora_o_filtro_de_situacao(estudo, elegivel, pendente, inelegivel):
+    pagina = decisoes.candidatos(estudo, situacoes=["elegivel"])
+
+    assert pagina["totais"] == {"elegivel": 1, "pendente": 1, "em_coleta": 0, "inelegivel": 1}
+    assert pagina["total"] == 1

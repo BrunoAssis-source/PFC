@@ -65,6 +65,15 @@ def previa(estudo):
     return {"eliminados": eliminar.count(), "mantidos": manter.count()}
 
 
+def previa_da_conta(usuario):
+    previas = [previa(estudo) for estudo in usuario.estudos.all()]
+    return {
+        "estudos": len(previas),
+        "eliminados": sum(p["eliminados"] for p in previas),
+        "mantidos": sum(p["mantidos"] for p in previas),
+    }
+
+
 def _guardar_so_a_contagem(voluntarios):
     # Copia o que o painel conta antes de a participação sumir, sem código nem ligação com o voluntário.
     incluidos = set(
@@ -110,5 +119,36 @@ def encerrar(estudo, usuario, request=None):
         request=request,
         usuario=usuario,
         objeto=f"{estudo.nome}. Eliminados: {len(voluntarios)}. Mantidos por outro estudo ativo: {mantidos}",
+    )
+    return {"eliminados": len(voluntarios), "mantidos": mantidos}
+
+
+@transaction.atomic
+def excluir(estudo, usuario, request=None):
+    """Exclui o estudo e elimina quem não tem outro estudo ativo, com a mesma regra do encerramento.
+
+    Quem permanece por outro estudo ativo perde só a participação neste estudo. Os valores continuam com o
+    voluntário, sem a participação que os coletou.
+    """
+    estudo = Estudo.objects.select_for_update().get(pk=estudo.pk)
+    eliminar, manter = separar(estudo)
+    voluntarios = list(eliminar.only("id", "codigo_hmac"))
+    mantidos = manter.count()
+    if voluntarios:
+        DecisaoCandidato.objects.filter(codigo_voluntario__in=[v.codigo_hmac for v in voluntarios]).delete()
+        apagar_dados(voluntarios)
+
+    # Sobram as participações dos mantidos e as interrompidas ou revogadas, que a PROTECT impediria de seguir.
+    Participacao.objects.filter(estudo=estudo).delete()
+    estudo.decisoes.all().delete()
+    estudo.registros_anonimos.all().delete()
+    nome = estudo.nome
+    estudo.delete()
+
+    registrar(
+        RegistroAuditoria.Acao.ELIMINACAO_EXCLUSAO,
+        request=request,
+        usuario=usuario,
+        objeto=f"{nome}. Eliminados: {len(voluntarios)}. Mantidos por outro estudo ativo: {mantidos}",
     )
     return {"eliminados": len(voluntarios), "mantidos": mantidos}

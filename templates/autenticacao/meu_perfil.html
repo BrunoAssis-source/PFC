@@ -29,6 +29,7 @@
         <button class="painel-acao" type="submit">Salvar alterações</button>
         <a class="painel-voltar" href="{% url 'trocar_senha' %}">Alterar senha</a>
         <a class="painel-voltar" href="{% url 'inicio' %}">Cancelar</a>
+        {% if not user.is_staff %}<a class="painel-voltar perigo" href="{% url 'excluir_minha_conta' %}">Excluir minha conta</a>{% endif %}
     </div>
 </form>
 {% endblock %}

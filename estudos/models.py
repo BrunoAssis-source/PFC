@@ -39,6 +39,10 @@ class Estudo(models.Model):
         if self.pk and self.situacao != self.Situacao.ENCERRADO:
             if Estudo.objects.filter(pk=self.pk, situacao=self.Situacao.ENCERRADO).exists():
                 raise ValidationError("Estudo encerrado não volta a ficar ativo, porque os dados dos voluntários já foram eliminados.")
+        # Os critérios travam na ativação, então voltar a rascunho permitiria alterá-los depois de haver coleta.
+        if self.pk and self.situacao == self.Situacao.RASCUNHO:
+            if Estudo.objects.filter(pk=self.pk).exclude(situacao=self.Situacao.RASCUNHO).exists():
+                raise ValidationError("Estudo ativado não volta a ser rascunho, porque os critérios já não podem mudar.")
         super().save(*args, **kwargs)
 
     def regras(self):

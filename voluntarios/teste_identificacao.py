@@ -117,10 +117,11 @@ def test_mesmo_voluntario_nao_entra_duas_vezes_no_estudo(cliente, estudo_ativo):
 def test_estudo_em_rascunho_ou_encerrado_nao_recebe_voluntario(cliente, estudo_ativo):
     cadastrar(cliente)
     voluntario = Voluntario.objects.get()
-    for situacao in (Estudo.Situacao.RASCUNHO, Estudo.Situacao.ENCERRADO):
-        estudo_ativo.situacao = situacao
-        estudo_ativo.save()
-        vincular(cliente, voluntario, estudo_ativo)
+    rascunho = Estudo.objects.create(nome="Rascunho", condicao="Condição", pesquisador=estudo_ativo.pesquisador)
+    estudo_ativo.situacao = Estudo.Situacao.ENCERRADO
+    estudo_ativo.save()
+    for fora_de_ativo in (rascunho, estudo_ativo):
+        vincular(cliente, voluntario, fora_de_ativo)
     assert not Participacao.objects.exists()
 
 

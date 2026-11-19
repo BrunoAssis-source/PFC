@@ -56,13 +56,25 @@
 </div>
 {% endif %}
 
-<div class="painel-formulario-acoes">
-    <a class="painel-acao" href="{% url 'estudos:criterios' estudo.id %}">
-        {% if estudo.situacao == "encerrado" %}Ver critérios{% elif resumo %}Gerenciar critérios{% else %}<span aria-hidden="true">+</span> Definir critérios{% endif %}
-    </a>
-    <a class="painel-acao" href="{% url 'estudos:classificacao' estudo.id %}">Ver classificação</a>
-    <a class="painel-acao" href="{% url 'voluntarios:candidatos' estudo.id %}">Candidatos</a>
-    {% if estudo.situacao != "encerrado" %}<a class="painel-acao" href="{% url 'estudos:encerrar' estudo.id %}">Encerrar estudo</a>{% endif %}
-    <a class="painel-voltar" href="{% url 'estudos:listar' %}">Voltar para os estudos</a>
+<div class="painel-secao espaco">
+    <h2 class="painel-secao-titulo">Consultar</h2>
 </div>
+<div class="painel-acoes-grupo">
+    <a class="painel-acao secundaria" href="{% url 'estudos:criterios' estudo.id %}">
+        {% if estudo.situacao != "rascunho" %}Ver critérios{% elif resumo %}Gerenciar critérios{% else %}<span aria-hidden="true">+</span> Definir critérios{% endif %}
+    </a>
+    <a class="painel-acao secundaria" href="{% url 'voluntarios:candidatos' estudo.id %}">Candidatos</a>
+    <a class="painel-acao secundaria" href="{% url 'voluntarios:exportar' estudo.id %}">Exportar dados (CSV)</a>
+</div>
+
+<div class="painel-secao espaco">
+    <h2 class="painel-secao-titulo">Situação do estudo</h2>
+</div>
+<div class="painel-acoes-grupo">
+    {% if estudo.situacao == "rascunho" %}<a class="painel-acao" href="{% url 'estudos:ativar' estudo.id %}">Ativar estudo</a>{% endif %}
+    {% if estudo.situacao != "encerrado" %}<a class="painel-acao" href="{% url 'estudos:encerrar' estudo.id %}">Encerrar estudo</a>{% endif %}
+    <a class="painel-acao perigo" href="{% url 'estudos:excluir' estudo.id %}">Excluir estudo</a>
+</div>
+
+<p style="margin-top:2rem"><a class="painel-voltar" href="{% url 'estudos:listar' %}">Voltar para os estudos</a></p>
 {% endblock %}

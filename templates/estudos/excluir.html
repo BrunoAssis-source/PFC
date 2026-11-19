@@ -1,0 +1,33 @@
+{% extends "painel.html" %}
+{% block title %}Excluir estudo | UniData{% endblock %}
+{% block content %}
+<div class="painel-cabecalho">
+    <div>
+        <p class="painel-rotulo">{{ estudo.nome }}</p>
+        <h1 class="painel-titulo">Excluir estudo</h1>
+    </div>
+</div>
+
+<div class="painel-indicadores">
+    <div class="painel-indicador">
+        <span class="painel-numero">{{ eliminados }}</span>
+        <span class="painel-legenda">Voluntários que serão eliminados</span>
+    </div>
+    <div class="painel-indicador">
+        <span class="painel-numero">{{ mantidos }}</span>
+        <span class="painel-legenda">Permanecem por estarem em outro estudo ativo</span>
+    </div>
+</div>
+
+<p class="painel-abertura">
+    O estudo, os critérios e as decisões sobre candidatos serão apagados. Serão eliminados {{ eliminados }}
+    voluntário{{ eliminados|pluralize }} e {{ mantidos }} permanece{{ mantidos|pluralize:",m" }} por
+    estar{{ mantidos|pluralize:"em" }} em outro estudo ativo. Esta ação não pode ser desfeita.
+</p>
+
+<form method="post" class="painel-formulario-acoes">
+    {% csrf_token %}
+    <button class="painel-acao perigo" type="submit">Excluir estudo e eliminar os dados</button>
+    <a class="painel-voltar" href="{% url 'estudos:detalhe' estudo.id %}">Cancelar</a>
+</form>
+{% endblock %}
