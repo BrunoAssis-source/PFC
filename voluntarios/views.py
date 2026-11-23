@@ -1,6 +1,7 @@
 from django.contrib import messages
+from django.core.paginator import Paginator
 from django.db import IntegrityError, transaction
-from django.http import Http404
+from django.http import Http404, HttpResponse
 from django.urls import reverse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
@@ -10,7 +11,7 @@ from auditoria.servicos import registrar
 from autenticacao.models import Usuario
 from autenticacao.permissoes import exige_perfil
 from catalogo.models import OpcaoDominio
-from estudos.models import Estudo
+from estudos.models import Estudo, Tcle
 
 from . import cpf as cpf_util
 from .coleta import concluir_se_nao_ha_o_que_perguntar, proxima_variavel, registrar_resposta, respostas_pendentes
@@ -73,7 +74,9 @@ def detalhe(request, id):
     contexto = {
         "voluntario": voluntario,
         "cpf_mascarado": cpf_util.mascarar(cpf_util.decifrar(voluntario.cpf_cifrado)),
-        "participacoes": voluntario.participacoes.select_related("estudo"),
+        "pagina": Paginator(voluntario.participacoes.select_related("estudo").order_by("-id"), 10).get_page(
+            request.GET.get("pagina")
+        ),
         "form": VinculoForm(),
     }
     return render(request, "voluntarios/detalhe.html", contexto)
@@ -90,6 +93,10 @@ def vincular(request, id):
                 messages.error(request, erro)
         return redirect("voluntarios:detalhe", id=voluntario.id)
     estudo = form.cleaned_data["estudo"]
+    if not estudo.tem_tcle:
+        # A tela trava a caixa, mas o servidor também recusa: não há termo para conferir.
+        messages.error(request, "O pesquisador ainda não anexou o TCLE deste estudo.")
+        return redirect("voluntarios:detalhe", id=voluntario.id)
     participacao, criada = Participacao.objects.get_or_create(
         voluntario=voluntario,
         estudo=estudo,
@@ -107,6 +114,20 @@ def vincular(request, id):
     else:
         messages.info(request, "Este voluntário já participa do estudo.")
     return redirect("voluntarios:detalhe", id=voluntario.id)
+
+
+@exige_perfil(Usuario.Perfil.PROFISSIONAL)
+def tcle_do_estudo(request, id):
+    # Só estudo ativo: é o único em que o profissional confere o termo assinado.
+    estudo = get_object_or_404(Estudo, pk=id, situacao=Estudo.Situacao.ATIVO)
+    tcle = Tcle.objects.filter(estudo=estudo).first()
+    if tcle is None:
+        # Estudo ativado antes de o anexo ser obrigatório: avisa em vez de mostrar página de erro.
+        messages.error(request, "O pesquisador ainda não anexou o TCLE deste estudo.")
+        return redirect(request.META.get("HTTP_REFERER") or "voluntarios:identificar")
+    resposta = HttpResponse(bytes(tcle.conteudo), content_type="application/pdf")
+    resposta["Content-Disposition"] = f'inline; filename="{tcle.nome_arquivo.replace(chr(34), "")}"'
+    return resposta
 
 
 @exige_perfil(Usuario.Perfil.PROFISSIONAL)

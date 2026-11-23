@@ -25,11 +25,18 @@
                 {% csrf_token %}
                 <input type="hidden" name="estudo" value="{{ p.estudo.id }}">
                 <input type="hidden" name="seguir" value="coleta">
-                <label class="form-check pendencia-tcle">
-                    <input class="form-check-input" type="checkbox" name="tcle" required>
-                    <span class="form-check-label">Conferi o TCLE assinado, no documento físico</span>
-                </label>
-                <button class="painel-acao" type="submit">Coletar</button>
+                <div class="pendencia-tcle">
+                    <label class="form-check">
+                        <input class="form-check-input" type="checkbox" name="tcle" required{% if not p.estudo.tem_tcle %} disabled{% endif %}>
+                        <span class="form-check-label">Conferi o TCLE assinado, no documento físico</span>
+                    </label>
+                    {% if p.estudo.tem_tcle %}
+                        <a class="pendencia-tcle-link" href="{% url 'voluntarios:tcle_do_estudo' p.estudo.id %}" target="_blank" rel="noopener">Abrir o TCLE do estudo (PDF)</a>
+                    {% else %}
+                        <span class="pendencia-tcle-link">TCLE ainda não anexado pelo pesquisador</span>
+                    {% endif %}
+                </div>
+                <button class="painel-acao" type="submit"{% if not p.estudo.tem_tcle %} disabled{% endif %}>Coletar</button>
             </form>
         </div>
     {% empty %}

@@ -2,7 +2,7 @@ import pytest
 
 from autenticacao.models import Usuario
 from catalogo.models import OpcaoDominio, Variavel
-from estudos.models import Criterio, Estudo
+from estudos.models import Criterio, Estudo, Tcle
 from voluntarios import cpf
 from voluntarios.models import Participacao, Voluntario
 
@@ -27,9 +27,11 @@ def pesquisadora(db):
 
 @pytest.fixture
 def estudo_ativo(pesquisadora):
-    return Estudo.objects.create(
+    estudo = Estudo.objects.create(
         nome="Controle glicêmico", condicao="Diabetes tipo 2", pesquisador=pesquisadora, situacao=Estudo.Situacao.ATIVO
     )
+    Tcle.objects.create(estudo=estudo, nome_arquivo="tcle.pdf", conteudo=b"%PDF-1.4 sintetico")
+    return estudo
 
 
 @pytest.fixture
@@ -55,9 +57,11 @@ def criterio(estudo, codigo, operador, escolhidas=(), tipo_regra=Criterio.TipoRe
 
 
 def novo_estudo(pesquisadora, nome="Estudo de teste"):
-    return Estudo.objects.create(
+    estudo = Estudo.objects.create(
         nome=nome, condicao="Condição", pesquisador=pesquisadora, situacao=Estudo.Situacao.ATIVO
     )
+    Tcle.objects.create(estudo=estudo, nome_arquivo="tcle.pdf", conteudo=b"%PDF-1.4 sintetico")
+    return estudo
 
 
 def nova_participacao(profissional, estudo, numero=CPF_A):

@@ -420,6 +420,11 @@ a.painel-item:hover {
     font-weight: 600;
 }
 
+.painel-acao:disabled {
+    opacity: .45;
+    cursor: not-allowed;
+}
+
 .painel-acao.perigo {
     background: #b3261e;
 }
@@ -1520,8 +1525,21 @@ a.painel-item:hover {
 }
 
 .pendencia-tcle {
+    display: grid;
+    gap: .25rem;
     margin: 0;
     font-size: .88rem;
+}
+
+.pendencia-tcle .form-check {
+    margin: 0;
+}
+
+.pendencia-tcle-link {
+    padding-left: 1.5em;
+    color: var(--verde);
+    font-size: .82rem;
+    font-weight: 600;
 }
 
 .painel-cabecalho + .painel-secao {
@@ -1576,4 +1594,192 @@ a.painel-item:hover {
     font-size: .85rem;
     font-weight: 600;
     text-decoration: underline;
+}
+
+.dash-filtros {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem 1.25rem;
+    align-items: end;
+    margin-bottom: 1.5rem;
+    padding: 1.25rem 1.5rem;
+    background: #fff;
+    border: 1px solid var(--borda);
+    border-radius: 18px;
+}
+
+@media (max-width: 767px) {
+    .dash-filtros {
+        grid-template-columns: 1fr;
+    }
+}
+
+.dash-filtro label {
+    display: block;
+    margin-bottom: .3rem;
+    color: var(--tinta-suave);
+    font-size: .85rem;
+}
+
+.dash-filtro .errorlist {
+    margin: .25rem 0 0;
+    padding: 0;
+    list-style: none;
+    color: #b4532f;
+    font-size: .85rem;
+}
+
+.dash-filtro-acoes {
+    display: flex;
+    gap: .5rem;
+}
+
+.dash-filtro-nota {
+    grid-column: 1 / -1;
+    margin: 0;
+    padding-top: .75rem;
+    border-top: 1px solid var(--borda);
+}
+
+.dash-estudos {
+    position: relative;
+}
+
+.dash-estudos summary {
+    cursor: pointer;
+    list-style: none;
+}
+
+.dash-estudos summary::-webkit-details-marker {
+    display: none;
+}
+
+.dash-estudos-lista {
+    position: absolute;
+    z-index: 10;
+    top: calc(100% + .25rem);
+    left: 0;
+    right: 0;
+    max-height: 14rem;
+    overflow-y: auto;
+    padding: .4rem;
+    background: #fff;
+    border: 1px solid var(--borda);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .08);
+}
+
+.dash-estudos-item {
+    display: flex !important;
+    align-items: center;
+    gap: .6rem;
+    margin: 0 !important;
+    padding: .45rem .6rem;
+    color: inherit !important;
+    font-size: .95rem !important;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.dash-estudos-item:hover {
+    background: var(--areia);
+}
+
+.dash-explica {
+    margin: -.25rem 0 .85rem;
+    color: var(--tinta-suave);
+    font-size: .92rem;
+}
+
+.dash-detalhe {
+    margin-top: .25rem;
+    color: var(--tinta-suave);
+    font-size: .8rem;
+    line-height: 1.35;
+}
+
+.dash-cartoes {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.dash-estudo {
+    margin-bottom: 1rem;
+    background: #fff;
+    border: 1px solid var(--borda);
+    border-radius: 18px;
+    overflow: hidden;
+}
+
+.dash-estudo-topo {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem 1rem;
+    padding: .9rem 1.25rem;
+    background: var(--areia);
+    border-bottom: 1px solid var(--borda);
+}
+
+.dash-estudo-nome {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 600;
+}
+
+.dash-selo {
+    padding: .15rem .65rem;
+    font-size: .78rem;
+    background: #fff;
+    border: 1px solid var(--borda);
+    border-radius: 999px;
+}
+
+.dash-selo-ativo {
+    color: var(--verde);
+    border-color: var(--verde);
+}
+
+.dash-estudo-corpo {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 767px) {
+    .dash-estudo-corpo {
+        grid-template-columns: 1fr;
+    }
+}
+
+.dash-coluna {
+    padding: 1rem 1.25rem 1.25rem;
+}
+
+.dash-coluna + .dash-coluna {
+    border-left: 1px solid var(--borda);
+}
+
+@media (max-width: 767px) {
+    .dash-coluna + .dash-coluna {
+        border-left: 0;
+        border-top: 1px solid var(--borda);
+    }
+}
+
+.dash-subtitulo {
+    margin: 1rem 0 .5rem;
+    color: var(--tinta-suave);
+    font-size: .78rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.dash-coluna > .dash-subtitulo:first-child {
+    margin-top: 0;
+}
+
+.dash-texto {
+    margin: 0 0 .5rem;
+    font-size: .95rem;
 }
