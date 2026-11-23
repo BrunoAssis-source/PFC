@@ -61,7 +61,7 @@ def test_variavel_categorica_sem_dominio_fica_fora():
     subcategoria = Subcategoria.objects.create(categoria=categoria, codigo="REF", nome="Referência", ordem=1)
     Variavel.objects.create(
         subcategoria=subcategoria, codigo="cargo_na_tabela", nome="Cargo na tabela", tipo=Variavel.Tipo.NOMINAL,
-        tabela_referencia="cbo",
+        tabela_referencia="tabela_externa",
     )
 
     assert rotulos("cargo na tabela") == []

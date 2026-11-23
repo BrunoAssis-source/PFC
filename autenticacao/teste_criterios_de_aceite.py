@@ -209,3 +209,173 @@ def test_RF03_RN07_link_com_menos_de_3_dias_ainda_vale(client, monkeypatch):
     monkeypatch.setattr(PasswordResetTokenGenerator, "_now", lambda self: datetime.now() + timedelta(days=2))
 
     assert client.get(endereco, follow=True).context["validlink"]
+
+
+def test_RN02_aceite_dos_termos_fica_gravado_com_a_data_e_a_versao(client):
+    from django.utils import timezone
+
+    from autenticacao.models import TERMOS_VERSAO
+
+    antes = timezone.now()
+    client.post(reverse("cadastro"), dados_de_cadastro())
+
+    usuario = Usuario.objects.get()
+    assert usuario.termos_versao == TERMOS_VERSAO
+    assert antes <= usuario.termos_aceitos_em <= timezone.now()
+
+
+def test_RN02_cadastro_recusado_nao_cria_conta_nem_aceite(client):
+    dados = dados_de_cadastro()
+    del dados["aceite"]
+
+    client.post(reverse("cadastro"), dados)
+
+    assert not Usuario.objects.exists()
+
+
+def test_RN02_conta_criada_sem_o_formulario_de_cadastro_nao_tem_aceite_registrado():
+    usuario = criar()
+
+    assert usuario.termos_aceitos_em is None and usuario.termos_versao == ""
+
+
+@pytest.fixture
+def exigindo_aceite(settings):
+    settings.EXIGE_ACEITE_DOS_TERMOS = True
+
+
+def test_RN02_conta_sem_aceite_e_levada_a_tela_de_aceite_em_qualquer_rota(client, exigindo_aceite):
+    client.force_login(criar())
+
+    for rota in ("inicio", "estudos:listar", "usuarios", "auditoria:listar"):
+        resposta = client.get(reverse(rota))
+
+        assert resposta.status_code == 302 and resposta.url == reverse("aceitar_termos")
+
+
+def test_RN02_tela_de_aceite_e_os_textos_continuam_acessiveis_sem_aceite(client, exigindo_aceite):
+    client.force_login(criar())
+
+    for rota in ("aceitar_termos", "termos_de_uso", "politica_privacidade"):
+        assert client.get(reverse(rota)).status_code == 200
+
+
+def test_RN02_quem_nao_aceita_pode_sair(client, exigindo_aceite):
+    client.force_login(criar())
+
+    resposta = client.post(reverse("logout"))
+
+    assert resposta.status_code == 302
+    assert "_auth_user_id" not in client.session
+
+
+def test_RN02_aceitar_na_tela_grava_data_versao_e_auditoria_e_libera_o_acesso(client, exigindo_aceite):
+    from autenticacao.models import TERMOS_VERSAO
+
+    usuario = criar()
+    client.force_login(usuario)
+
+    resposta = client.post(reverse("aceitar_termos"), {"aceite": "on"})
+
+    assert resposta.status_code == 302 and resposta.url == reverse("inicio")
+    usuario.refresh_from_db()
+    assert usuario.termos_aceitos_em is not None and usuario.termos_versao == TERMOS_VERSAO
+    assert RegistroAuditoria.objects.filter(acao=Acao.CADASTRO, usuario=usuario, objeto__contains="aceite").exists()
+    assert client.get(reverse("inicio")).status_code == 200
+
+
+def test_RN02_enviar_sem_marcar_o_aceite_e_recusado_e_nao_grava(client, exigindo_aceite):
+    usuario = criar()
+    client.force_login(usuario)
+
+    resposta = client.post(reverse("aceitar_termos"), {})
+
+    assert resposta.status_code == 200
+    usuario.refresh_from_db()
+    assert usuario.termos_aceitos_em is None
+
+
+def test_RN02_nova_versao_dos_termos_pede_o_aceite_de_novo(client, exigindo_aceite):
+    from django.utils import timezone
+
+    usuario = criar(termos_aceitos_em=timezone.now(), termos_versao="0")
+    client.force_login(usuario)
+
+    resposta = client.get(reverse("inicio"))
+
+    assert resposta.status_code == 302 and resposta.url == reverse("aceitar_termos")
+
+
+def test_RN02_conta_que_aceitou_a_versao_atual_nao_e_interrompida(client, exigindo_aceite):
+    from django.utils import timezone
+
+    from autenticacao.models import TERMOS_VERSAO
+
+    client.force_login(criar(termos_aceitos_em=timezone.now(), termos_versao=TERMOS_VERSAO))
+
+    assert client.get(reverse("inicio")).status_code == 200
+
+
+def test_RN02_visitante_continua_indo_ao_login_e_nao_a_tela_de_aceite(client, exigindo_aceite):
+    resposta = client.get(reverse("inicio"))
+
+    assert resposta.status_code == 302 and reverse("aceitar_termos") not in resposta.url
+
+
+def test_RN02_conta_criada_pelo_administrador_tem_de_aceitar_no_primeiro_acesso(client, exigindo_aceite):
+    admin = criar("admin@alunos.umc.br", is_staff=True, termos_aceitos_em=None)
+    from django.utils import timezone
+
+    from autenticacao.models import TERMOS_VERSAO
+
+    admin.termos_aceitos_em, admin.termos_versao = timezone.now(), TERMOS_VERSAO
+    admin.save()
+    client.force_login(admin)
+    client.post(
+        reverse("criar_usuario"),
+        {
+            "nome_completo": "Criado pelo admin", "email": "novo@alunos.umc.br", "perfil": Usuario.Perfil.PROFISSIONAL,
+            "password1": "Frase longa 2026 azul", "password2": "Frase longa 2026 azul",
+        },
+    )
+    novo = Usuario.objects.get(email="novo@alunos.umc.br")
+    assert novo.termos_aceitos_em is None
+    client.force_login(novo)
+
+    assert client.get(reverse("inicio")).url == reverse("aceitar_termos")
+
+
+def test_administrador_nao_acessa_as_telas_de_estudo_e_a_tentativa_e_registrada(client):
+    administrador = criar("adm2@alunos.umc.br", is_staff=True)
+    client.force_login(administrador)
+
+    for rota in ("estudos:listar", "estudos:criar"):
+        assert client.get(reverse(rota)).status_code == 403
+
+    assert RegistroAuditoria.objects.filter(acao=Acao.ACESSO_NEGADO, usuario=administrador).count() == 2
+
+
+def test_administrador_com_perfil_de_profissional_tambem_nao_acessa_coleta_nem_pendencias(client):
+    administrador = criar("adm3@alunos.umc.br", perfil=Usuario.Perfil.PROFISSIONAL, is_staff=True)
+    client.force_login(administrador)
+
+    for rota in ("coleta", "pendencias", "voluntarios:identificar"):
+        assert client.get(reverse(rota)).status_code == 403
+
+
+def test_administrador_ve_so_inicio_auditoria_e_usuarios_no_menu(client):
+    import re
+
+    client.force_login(criar("adm4@alunos.umc.br", is_staff=True))
+
+    html = client.get(reverse("inicio")).content.decode()
+
+    menu = re.findall(r'class="painel-item[^"]*"\s+href="([^"]+)"', html)
+    assert menu == [reverse("inicio"), reverse("auditoria:listar"), reverse("usuarios")]
+
+
+def test_administrador_nao_cria_estudo_pelo_admin_do_django(client):
+    administrador = criar("adm5@alunos.umc.br", is_staff=True, is_superuser=True)
+    client.force_login(administrador)
+
+    assert client.get("/admin/estudos/estudo/add/").status_code == 403

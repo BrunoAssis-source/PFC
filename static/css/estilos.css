@@ -180,8 +180,29 @@ a:hover {
 
 .acesso-links a,
 .acesso-aviso a,
-.acesso-rodape a {
+.acesso-rodape a,
+.acesso-cartao .form-check a {
     color: var(--verde);
+}
+
+.acesso-cartao .form-check-input:checked {
+    background-color: var(--verde);
+    border-color: var(--verde);
+}
+
+.acesso-cartao .form-check-input:focus {
+    border-color: var(--verde);
+    box-shadow: 0 0 0 .2rem rgba(15, 74, 55, .2);
+}
+
+.acesso-links button {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--verde);
+    font: inherit;
+    text-decoration: underline;
+    cursor: pointer;
 }
 
 .envio-destino {
@@ -421,6 +442,48 @@ a.painel-item:hover {
 
 .painel-voltar.perigo {
     color: #b3261e;
+}
+
+.painel-acao.secundaria.perigo {
+    background: transparent;
+    color: #b3261e;
+    box-shadow: inset 0 0 0 2px #b3261e;
+}
+
+.perfil-secao {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    margin-top: 1.25rem;
+    padding: 1.5rem 2rem;
+}
+
+.perfil-secao .painel-acao {
+    flex: none;
+    white-space: nowrap;
+    text-decoration: none;
+}
+
+.perfil-secao-titulo {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 600;
+}
+
+.perfil-secao-texto .ajuda-campo {
+    margin-top: .25rem;
+}
+
+.perfil-risco {
+    border-color: #e6c3c0;
+}
+
+@media (max-width: 575.98px) {
+    .perfil-secao {
+        flex-direction: column;
+        align-items: flex-start;
+    }
 }
 
 .painel-indicadores {

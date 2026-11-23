@@ -14,6 +14,7 @@ from django.db.models import ProtectedError, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse, reverse_lazy
+from django.utils import timezone
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 
@@ -24,6 +25,7 @@ from voluntarios import eliminacao
 from voluntarios.pendencias import pendentes
 
 from .forms import (
+    AceiteDosTermosForm,
     CadastroForm,
     LoginForm,
     MeuPerfilForm,
@@ -35,7 +37,7 @@ from .forms import (
     UsuarioEdicaoForm,
 )
 from .confirmacao import INTERVALO_ENVIO, LimiteDeEnvio, emitir, encerrar, validar_codigo, validar_link
-from .models import Usuario
+from .models import TERMOS_VERSAO, Usuario
 from .permissoes import exige_administrador, exige_perfil, recusa_alterar_superusuario
 
 
@@ -98,6 +100,8 @@ def cadastrar(request):
     if request.method == "POST" and form.is_valid():
         usuario = form.save(commit=False)
         usuario.is_active = False
+        usuario.termos_aceitos_em = timezone.now()
+        usuario.termos_versao = TERMOS_VERSAO
         usuario.save()
         registrar(RegistroAuditoria.Acao.CADASTRO, request=request, usuario=usuario)
         enviar_confirmacao(request, usuario)
@@ -105,6 +109,23 @@ def cadastrar(request):
         request.session["confirmacao_pedida_em"] = time.time()
         return redirect("cadastro_enviado")
     return render(request, "autenticacao/cadastro.html", {"form": form})
+
+
+@login_required
+def aceitar_termos(request):
+    if request.user.termos_aceitos_em and request.user.termos_versao == TERMOS_VERSAO:
+        return redirect("inicio")
+    form = AceiteDosTermosForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        request.user.termos_aceitos_em = timezone.now()
+        request.user.termos_versao = TERMOS_VERSAO
+        request.user.save(update_fields=["termos_aceitos_em", "termos_versao"])
+        registrar(
+            RegistroAuditoria.Acao.CADASTRO, request=request, usuario=request.user,
+            objeto=f"aceite dos termos, versão {TERMOS_VERSAO}",
+        )
+        return redirect("inicio")
+    return render(request, "autenticacao/aceitar_termos.html", {"form": form})
 
 
 def cadastro_enviado(request):
@@ -154,7 +175,7 @@ def reenviar_confirmacao(request):
 @login_required
 def inicio(request):
     contexto = {}
-    if request.user.e_pesquisador:
+    if request.user.e_pesquisador and not request.user.is_staff:
         contexto["painel"] = dados_do_painel(request.user)
     return render(request, "autenticacao/inicio.html", contexto)
 

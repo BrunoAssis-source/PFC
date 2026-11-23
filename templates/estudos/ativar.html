@@ -8,7 +8,15 @@
     </div>
 </div>
 
-{% if not total_criterios %}
+{% if not tem_tcle %}
+<div class="alert alert-warning" role="alert">
+    Este estudo ainda não tem o TCLE anexado. Envie o arquivo em PDF antes de ativar.
+</div>
+<div class="painel-formulario-acoes">
+    <a class="painel-acao" href="{% url 'estudos:editar' estudo.id %}">Anexar TCLE</a>
+    <a class="painel-voltar" href="{% url 'estudos:detalhe' estudo.id %}">Cancelar</a>
+</div>
+{% elif not total_criterios %}
 <div class="alert alert-warning" role="alert">
     Este estudo ainda não tem critérios. Defina ao menos um antes de ativar, porque depois da ativação não será mais possível editá-los.
 </div>

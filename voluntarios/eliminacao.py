@@ -1,6 +1,7 @@
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.db.models import Q
+from django.utils import timezone
 
 from auditoria.models import RegistroAuditoria
 from auditoria.servicos import registrar
@@ -17,15 +18,19 @@ SITUACOES_QUE_VINCULAM = (Situacao.EM_COLETA, Situacao.CONCLUIDA, Situacao.ELIMI
 def com_outro_estudo_ativo(estudo):
     """Condição sobre Voluntario: tem vínculo com algum estudo ativo que não seja o informado.
 
-    É a regra única do RF12 (recusa) e do RF13 (encerramento). Compara por conjuntos no banco, sem iterar voluntários.
+    Estudo encerrado com prazo de guarda ainda em curso (RN33) também segura o voluntário. É a regra única do RF12
+    (recusa) e do RF13 (encerramento). Compara por conjuntos no banco, sem iterar voluntários.
     """
+    segura = Q(estudo__situacao=Estudo.Situacao.ATIVO) | Q(
+        estudo__situacao=Estudo.Situacao.ENCERRADO, estudo__prazo_guarda_ate__gt=timezone.localdate()
+    )
     participacoes = (
-        Participacao.objects.filter(estudo__situacao=Estudo.Situacao.ATIVO, situacao__in=SITUACOES_QUE_VINCULAM)
+        Participacao.objects.filter(segura, situacao__in=SITUACOES_QUE_VINCULAM)
         .exclude(estudo=estudo)
         .values("voluntario_id")
     )
     decisoes = (
-        DecisaoCandidato.objects.filter(estudo__situacao=Estudo.Situacao.ATIVO)
+        DecisaoCandidato.objects.filter(segura)
         .exclude(estudo=estudo)
         .values("codigo_voluntario")
     )
@@ -60,9 +65,14 @@ def separar(estudo):
     return vinculados.exclude(com_outro_estudo_ativo(estudo)), vinculados.filter(com_outro_estudo_ativo(estudo))
 
 
+def prazo_em_curso(estudo):
+    return bool(estudo.prazo_guarda_ate and estudo.prazo_guarda_ate > timezone.localdate())
+
+
 def previa(estudo):
     eliminar, manter = separar(estudo)
-    return {"eliminados": eliminar.count(), "mantidos": manter.count()}
+    adiada_ate = estudo.prazo_guarda_ate if prazo_em_curso(estudo) else None
+    return {"eliminados": eliminar.count(), "mantidos": manter.count(), "adiada_ate": adiada_ate}
 
 
 def previa_da_conta(usuario):
@@ -106,6 +116,21 @@ def encerrar(estudo, usuario, request=None):
     estudo.situacao = Estudo.Situacao.ENCERRADO
     estudo.save(update_fields=["situacao"])
 
+    if prazo_em_curso(estudo):
+        # RN33: a aprovação ética prevalece sobre a regra geral. A rotina eliminar_vencidos apaga na data.
+        registrar(
+            RegistroAuditoria.Acao.ELIMINACAO_ADIADA,
+            request=request,
+            usuario=usuario,
+            objeto=f"{estudo.nome}. Eliminação adiada até {estudo.prazo_guarda_ate:%d/%m/%Y}",
+        )
+        return {"eliminados": 0, "mantidos": 0, "adiada_ate": estudo.prazo_guarda_ate}
+    return eliminar_dados(estudo, usuario, request)
+
+
+@transaction.atomic
+def eliminar_dados(estudo, usuario=None, request=None):
+    """Elimina os voluntários vinculados ao estudo que não têm outro estudo ativo. Sem usuário, é a rotina agendada."""
     eliminar, manter = separar(estudo)
     voluntarios = list(eliminar.only("id", "codigo_hmac"))
     mantidos = manter.count()
@@ -120,7 +145,7 @@ def encerrar(estudo, usuario, request=None):
         usuario=usuario,
         objeto=f"{estudo.nome}. Eliminados: {len(voluntarios)}. Mantidos por outro estudo ativo: {mantidos}",
     )
-    return {"eliminados": len(voluntarios), "mantidos": mantidos}
+    return {"eliminados": len(voluntarios), "mantidos": mantidos, "adiada_ate": None}
 
 
 @transaction.atomic

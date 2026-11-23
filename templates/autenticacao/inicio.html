@@ -9,7 +9,9 @@
 </div>
 
 <p class="painel-abertura">
-    {% if user.e_pesquisador %}
+    {% if user.is_staff %}
+        Seu acesso é de administrador. Você gerencia as contas de usuário e consulta o registro de auditoria.
+    {% elif user.e_pesquisador %}
         Seu acesso é de pesquisador. Você cadastra os estudos e os critérios de elegibilidade de cada um.
     {% else %}
         Seu acesso é de profissional de coleta. Você registra os dados dos voluntários e acompanha o que falta preencher.
@@ -17,7 +19,16 @@
 </p>
 
 <div class="painel-atalhos">
-    {% if user.e_pesquisador %}
+    {% if user.is_staff %}
+        <a class="painel-atalho" href="{% url 'usuarios' %}">
+            <strong>Usuários</strong>
+            <span>Criar contas, corrigir perfis e desativar acessos.</span>
+        </a>
+        <a class="painel-atalho" href="{% url 'auditoria:listar' %}">
+            <strong>Auditoria</strong>
+            <span>Registro das operações sobre contas, estudos e dados de voluntários.</span>
+        </a>
+    {% elif user.e_pesquisador %}
         <a class="painel-atalho" href="{% url 'estudos:listar' %}">
             <strong>Estudos</strong>
             <span>Cadastro de cada estudo e dos critérios de elegibilidade que ele exige.</span>

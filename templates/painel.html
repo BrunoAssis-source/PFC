@@ -28,8 +28,9 @@
             <span>Início</span>
         </a>
 
-        {% if user.e_pesquisador %}
-            <a class="painel-item {% if rota == 'listar' or rota == 'criar' or rota == 'editar' %}ativo{% endif %}" href="{% url 'estudos:listar' %}">
+        {% if user.is_staff %}
+        {% elif user.e_pesquisador %}
+            <a class="painel-item {% if request.resolver_match.app_name == 'estudos' and rota == 'listar' or rota == 'criar' or rota == 'editar' %}ativo{% endif %}" href="{% url 'estudos:listar' %}">
                 {% include "icones/icone.html" with nome="pasta" %}
                 <span>Estudos</span>
             </a>

@@ -1,0 +1,22 @@
+{% extends "autenticacao/base_autenticacao.html" %}
+{% block title %}Aceite dos termos | UniData{% endblock %}
+{% block rotulo %}Antes de continuar{% endblock %}
+{% block cabecalho %}Aceite dos termos{% endblock %}
+{% block texto %}Para usar o sistema é preciso aceitar os termos de uso e a política de privacidade na versão atual.{% endblock %}
+{% block corpo_cartao %}
+<form method="post">
+    {% csrf_token %}
+    <div class="form-check mb-3">
+        {{ form.aceite }}
+        <label class="form-check-label" for="{{ form.aceite.id_for_label }}">Li e aceito os <a href="{% url 'termos_de_uso' %}" target="_blank" rel="noopener">termos de uso</a> e a <a href="{% url 'politica_privacidade' %}" target="_blank" rel="noopener">política de privacidade</a></label>
+        {% for error in form.aceite.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+    </div>
+    <button class="acesso-botao" type="submit">Aceitar e continuar</button>
+</form>
+<div class="acesso-links">
+    <form method="post" action="{% url 'logout' %}">
+        {% csrf_token %}
+        <button type="submit">Sair sem aceitar</button>
+    </form>
+</div>
+{% endblock %}

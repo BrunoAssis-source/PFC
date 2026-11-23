@@ -8,6 +8,17 @@
     </div>
 </div>
 
+{% if adiada_ate %}
+<p class="painel-abertura">
+    A aprovação ética deste estudo exige guardar os dados até {{ adiada_ate|date:"d/m/Y" }}. O estudo será encerrado agora
+    e os dados dos voluntários serão eliminados nessa data, a menos que outro estudo ativo os mantenha.
+</p>
+<form method="post" class="painel-formulario-acoes">
+    {% csrf_token %}
+    <button class="painel-acao" type="submit">Encerrar e guardar até a data</button>
+    <a class="painel-voltar" href="{% url 'estudos:detalhe' estudo.id %}">Cancelar</a>
+</form>
+{% else %}
 <div class="painel-indicadores">
     <div class="painel-indicador">
         <span class="painel-numero">{{ eliminados }}</span>
@@ -29,4 +40,5 @@
     <button class="painel-acao" type="submit">Encerrar e eliminar os dados</button>
     <a class="painel-voltar" href="{% url 'estudos:detalhe' estudo.id %}">Cancelar</a>
 </form>
+{% endif %}
 {% endblock %}

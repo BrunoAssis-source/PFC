@@ -1,7 +1,7 @@
 from django.contrib import messages
 from django.db.models import Count
 from django.core.exceptions import PermissionDenied
-from django.http import Http404
+from django.http import Http404, HttpResponse
 from django.urls import reverse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods, require_POST
@@ -17,7 +17,7 @@ from voluntarios import eliminacao
 from voluntarios.pendencias import sincronizar_notificacoes
 
 from .forms import CriterioForm, EstudoForm, VariavelPropostaForm
-from .models import Criterio, Estudo
+from .models import Criterio, Estudo, Tcle
 
 
 def estudo_do_pesquisador(request, id):
@@ -48,11 +48,12 @@ def listar(request):
 
 @exige_perfil(Usuario.Perfil.PESQUISADOR)
 def criar(request):
-    form = EstudoForm(request.POST or None)
+    form = EstudoForm(request.POST or None, request.FILES or None)
     if request.method == "POST" and form.is_valid():
         estudo = form.save(commit=False)
         estudo.pesquisador = request.user
         estudo.save()
+        form.salvar_tcle(estudo)
         registrar(RegistroAuditoria.Acao.ESTUDO_EDICAO, request=request, usuario=request.user, objeto=estudo.nome)
         return redirect("estudos:detalhe", id=estudo.id)
     return render(request, "estudos/formulario.html", {"form": form, "estudo": None})
@@ -62,7 +63,7 @@ def criar(request):
 def editar(request, id):
     estudo = estudo_do_pesquisador(request, id)
     anterior = estudo.situacao
-    form = EstudoForm(request.POST or None, instance=estudo)
+    form = EstudoForm(request.POST or None, request.FILES or None, instance=estudo)
     if request.method == "POST" and form.is_valid():
         # Encerrar elimina dados e não tem volta, então só acontece na tela de confirmação. Aqui a situação não muda.
         encerrando = form.cleaned_data["situacao"] == Estudo.Situacao.ENCERRADO and anterior != Estudo.Situacao.ENCERRADO
@@ -72,12 +73,24 @@ def editar(request, id):
         if encerrando or ativando:
             estudo.situacao = anterior
         estudo.save()
-        registrar(RegistroAuditoria.Acao.ESTUDO_EDICAO, request=request, usuario=request.user, objeto=estudo.nome)
+        enviou_tcle = form.salvar_tcle(estudo)
+        registrar(
+            RegistroAuditoria.Acao.ESTUDO_EDICAO, request=request, usuario=request.user,
+            objeto=f"{estudo.nome}. TCLE enviado" if enviou_tcle else estudo.nome,
+        )
         # Ativar o estudo pode deixar voluntários já registrados pendentes.
         sincronizar_notificacoes(estudo=estudo)
         destino = "estudos:encerrar" if encerrando else "estudos:ativar" if ativando else "estudos:detalhe"
         return redirect(destino, id=estudo.id)
     return render(request, "estudos/formulario.html", {"form": form, "estudo": estudo})
+
+
+@exige_perfil(Usuario.Perfil.PESQUISADOR)
+def baixar_tcle(request, id):
+    tcle = get_object_or_404(Tcle, estudo__pk=id, estudo__pesquisador=request.user)
+    resposta = HttpResponse(bytes(tcle.conteudo), content_type="application/pdf")
+    resposta["Content-Disposition"] = f'inline; filename="{tcle.nome_arquivo.replace(chr(34), "")}"'
+    return resposta
 
 
 @exige_perfil(Usuario.Perfil.PESQUISADOR)
@@ -87,7 +100,12 @@ def ativar(request, id):
     if estudo.situacao != Estudo.Situacao.RASCUNHO:
         raise PermissionDenied("Só o rascunho pode ser ativado.")
     if request.method == "GET":
-        return render(request, "estudos/ativar.html", {"estudo": estudo, "total_criterios": estudo.criterios.count()})
+        contexto = {"estudo": estudo, "total_criterios": estudo.criterios.count(), "tem_tcle": estudo.tem_tcle}
+        return render(request, "estudos/ativar.html", contexto)
+    # O servidor recusa mesmo quando a tela não oferece o botão.
+    if not estudo.tem_tcle:
+        messages.error(request, "Anexe o TCLE do estudo antes de ativar.")
+        return redirect("estudos:editar", id=estudo.id)
     # Sem critério o estudo ficaria vazio para sempre, porque depois de ativado os critérios não mudam.
     if not estudo.criterios.exists():
         messages.error(request, "Defina ao menos um critério antes de ativar o estudo.")
@@ -110,11 +128,16 @@ def encerrar(request, id):
     if request.method == "GET":
         return render(request, "estudos/encerrar.html", {"estudo": estudo, **eliminacao.previa(estudo)})
     resultado = eliminacao.encerrar(estudo, request.user, request)
-    messages.success(
-        request,
-        f"Estudo encerrado. {resultado['eliminados']} voluntário(s) eliminado(s) e "
-        f"{resultado['mantidos']} mantido(s) por estarem em outro estudo ativo.",
-    )
+    if resultado["adiada_ate"]:
+        messages.success(
+            request, f"Estudo encerrado. Os dados dos voluntários serão eliminados em {resultado['adiada_ate']:%d/%m/%Y}."
+        )
+    else:
+        messages.success(
+            request,
+            f"Estudo encerrado. {resultado['eliminados']} voluntário(s) eliminado(s) e "
+            f"{resultado['mantidos']} mantido(s) por estarem em outro estudo ativo.",
+        )
     return redirect("estudos:detalhe", id=estudo.id)
 
 

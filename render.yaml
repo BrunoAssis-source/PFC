@@ -1,0 +1,71 @@
+services:
+  - type: web
+    name: unidata
+    runtime: python
+    buildCommand: bash build.sh
+    startCommand: gunicorn configuracao.wsgi:application
+    envVars:
+      - key: DJANGO_DEBUG
+        value: "0"
+      - key: DB_SSLMODE
+        value: require
+      - key: DJANGO_SECRET_KEY
+        sync: false
+      - key: DJANGO_ALLOWED_HOSTS
+        sync: false
+      - key: CSRF_TRUSTED_ORIGINS
+        sync: false
+      - key: CHAVE_HMAC
+        sync: false
+      - key: CHAVE_CIFRA
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: EMAIL_REMETENTE
+        sync: false
+      - key: DB_NAME
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: "5432"
+
+  # Reavalia as pendências (valor que venceu pela vida útil) e elimina os dados dos estudos cujo prazo de guarda
+  # terminou. Usa as mesmas variáveis de ambiente do serviço web, copiadas no painel do Render.
+  - type: cron
+    name: unidata-rotinas
+    runtime: python
+    schedule: "0 6 * * *"
+    buildCommand: pip install -r requirements.txt
+    startCommand: python manage.py avisar_pendencias && python manage.py eliminar_vencidos
+    envVars:
+      - key: DJANGO_DEBUG
+        value: "0"
+      - key: DB_SSLMODE
+        value: require
+      - key: DJANGO_SECRET_KEY
+        sync: false
+      - key: DJANGO_ALLOWED_HOSTS
+        sync: false
+      - key: CHAVE_HMAC
+        sync: false
+      - key: CHAVE_CIFRA
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: EMAIL_REMETENTE
+        sync: false
+      - key: DB_NAME
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: "5432"

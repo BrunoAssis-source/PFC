@@ -12,7 +12,8 @@ def exige_perfil(*perfis):
         @wraps(view)
         @login_required
         def verificar(request, *args, **kwargs):
-            if request.user.perfil not in perfis:
+            # O administrador gerencia contas e consulta a auditoria. Estudo, coleta e pendência são de quem pesquisa.
+            if request.user.is_staff or request.user.perfil not in perfis:
                 registrar(
                     RegistroAuditoria.Acao.ACESSO_NEGADO,
                     request=request,

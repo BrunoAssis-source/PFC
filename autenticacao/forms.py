@@ -7,6 +7,7 @@ from django.contrib.auth.forms import (
     UserCreationForm,
 )
 
+from . import limite
 from .models import Usuario
 
 
@@ -50,12 +51,17 @@ class LoginForm(EstiloBootstrapMixin, AuthenticationForm):
     username = forms.EmailField(label="Email", widget=forms.EmailInput(attrs={"autocomplete": "email"}))
 
     def clean(self):
+        email = self.cleaned_data.get("username", "")
+        if limite.bloqueado("login", email, limite.LOGIN_MAXIMO):
+            raise forms.ValidationError(
+                "Muitas tentativas de entrada. Aguarde 15 minutos e tente de novo.", code="bloqueado"
+            )
         try:
-            return super().clean()
+            resultado = super().clean()
         except forms.ValidationError:
+            limite.registrar_falha("login", email)
             # O backend trata conta inativa como credencial inválida. Só avisa que falta confirmar
             # quem acertou a senha, para o aviso não revelar quais emails têm cadastro.
-            email = self.cleaned_data.get("username", "")
             usuario = Usuario.objects.filter(email__iexact=email).first()
             if usuario and usuario.aguarda_confirmacao and usuario.check_password(self.cleaned_data.get("password", "")):
                 self.email_nao_confirmado = True
@@ -65,6 +71,8 @@ class LoginForm(EstiloBootstrapMixin, AuthenticationForm):
                     code="email_nao_confirmado",
                 )
             raise
+        limite.limpar("login", email)
+        return resultado
 
 
 class CadastroForm(AjudaSenhaMixin, EstiloBootstrapMixin, UserCreationForm):
@@ -92,8 +100,23 @@ class CadastroForm(AjudaSenhaMixin, EstiloBootstrapMixin, UserCreationForm):
         return email
 
 
+class AceiteDosTermosForm(forms.Form):
+    aceite = forms.BooleanField(
+        error_messages={"required": "Aceite os termos de uso e a política de privacidade para continuar."},
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["aceite"].widget.attrs["class"] = "form-check-input"
+
+
 class SolicitarSenhaForm(EstiloBootstrapMixin, PasswordResetForm):
-    pass
+    def get_users(self, email):
+        # Acima do limite não envia nada, mas a tela responde igual, para não revelar quais emails têm conta.
+        if limite.bloqueado("reset", email, limite.RESET_MAXIMO):
+            return iter(())
+        limite.registrar_falha("reset", email, limite.RESET_JANELA)
+        return super().get_users(email)
 
 
 class NovaSenhaForm(AjudaSenhaMixin, EstiloBootstrapMixin, SetPasswordForm):

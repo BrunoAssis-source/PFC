@@ -11,10 +11,12 @@ class UsuarioAdmin(UserAdmin):
     list_display = ("email", "nome_completo", "perfil", "is_active", "is_staff")
     list_filter = ("perfil", "is_active", "is_staff")
     search_fields = ("email", "nome_completo")
+    readonly_fields = ("termos_aceitos_em", "termos_versao")
     fieldsets = (
         (None, {"fields": ("email", "password")}),
         ("Dados pessoais", {"fields": ("nome_completo",)}),
         ("Perfil", {"fields": ("perfil",)}),
+        ("Termos de uso", {"fields": ("termos_aceitos_em", "termos_versao")}),
         ("Permissões", {"fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions")}),
     )
     add_fieldsets = (

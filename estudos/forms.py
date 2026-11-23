@@ -7,7 +7,9 @@ from django.core.exceptions import ValidationError
 from autenticacao.forms import EstiloBootstrapMixin
 from catalogo.models import Operador, Variavel, normalizar
 
-from .models import Criterio, Estudo
+from .models import Criterio, Estudo, Tcle
+
+TAMANHO_MAXIMO_TCLE = 5 * 1024 * 1024
 
 # Operadores que a tela de critérios oferece em cada tipo, com o rótulo do botão.
 # O modelo aceita mais combinações, mas o pesquisador escolhe entre estas.
@@ -41,20 +43,57 @@ CAMPOS_DE_DATA = (
 class EstudoForm(EstiloBootstrapMixin, forms.ModelForm):
     class Meta:
         model = Estudo
-        fields = ("nome", "condicao", "descricao", "participantes_necessarios", "situacao")
+        fields = ("nome", "condicao", "descricao", "participantes_necessarios", "prazo_guarda_ate", "situacao")
         widgets = {
             "descricao": forms.Textarea(attrs={"rows": 4}),
+            "prazo_guarda_ate": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
         }
         help_texts = {
+            "prazo_guarda_ate": (
+                "Só preencha se a aprovação ética exigir guardar os dados por mais tempo. Ao encerrar o estudo antes "
+                "dessa data, a eliminação espera por ela. Depois do encerramento o prazo não muda."
+            ),
             "participantes_necessarios": "Quantos participantes o estudo precisa reunir. Deixe em branco se ainda não houver número definido.",
         }
 
+    tcle = forms.FileField(
+        label="TCLE (PDF)",
+        required=False,
+        help_text="Termo de Consentimento Livre e Esclarecido. Sem ele o estudo não pode ser ativado. Até 5 MB.",
+    )
+
+    def clean_tcle(self):
+        arquivo = self.cleaned_data["tcle"]
+        if not arquivo:
+            return arquivo
+        if arquivo.size > TAMANHO_MAXIMO_TCLE:
+            raise forms.ValidationError("O arquivo passa de 5 MB.")
+        # A extensão é digitada pelo usuário, então confere também a assinatura do PDF.
+        if not arquivo.name.lower().endswith(".pdf") or arquivo.read(5) != b"%PDF-":
+            raise forms.ValidationError("Envie o TCLE em PDF.")
+        arquivo.seek(0)
+        return arquivo
+
+    def salvar_tcle(self, estudo):
+        arquivo = self.cleaned_data.get("tcle")
+        if arquivo:
+            Tcle.objects.update_or_create(
+                estudo=estudo, defaults={"nome_arquivo": arquivo.name[:255], "conteudo": arquivo.read()}
+            )
+        return bool(arquivo)
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if self.instance.pk and self.instance.tem_tcle:
+            self.fields["tcle"].label = "Substituir o TCLE (PDF)"
+        if self.instance.situacao == Estudo.Situacao.ENCERRADO:
+            del self.fields["tcle"]
         if not self.instance.pk:
             # Todo estudo nasce como rascunho. A ativação passa pela tela de confirmação.
             del self.fields["situacao"]
         elif self.instance.situacao == Estudo.Situacao.ENCERRADO:
+            # Mudar o prazo depois do encerramento deixaria dado guardado sem rotina que o elimine.
+            self.fields["prazo_guarda_ate"].disabled = True
             self.fields["situacao"].choices = [(Estudo.Situacao.ENCERRADO, Estudo.Situacao.ENCERRADO.label)]
             self.fields["situacao"].help_text = "Estudo encerrado não volta a ficar ativo, porque os dados dos voluntários já foram eliminados."
         elif self.instance.situacao == Estudo.Situacao.ATIVO:

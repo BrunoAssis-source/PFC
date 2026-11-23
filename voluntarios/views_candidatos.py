@@ -80,6 +80,10 @@ def exportar(request, id):
     estudo = estudo_do_pesquisador(request, id)
     # Sem ação própria na auditoria para não criar migration. O prefixo no objeto distingue da leitura comum.
     registrar(RegistroAuditoria.Acao.ESTUDO_LEITURA, request=request, usuario=request.user, objeto=f"exportação: {estudo.nome}")
+    if estudo.criterios.filter(variavel__sensivel=True).exists():
+        registrar(
+            RegistroAuditoria.Acao.EXPORTACAO_SENSIVEL, request=request, usuario=request.user, objeto=estudo.nome
+        )
     resposta = HttpResponse(content_type="text/csv; charset=utf-8")
     resposta["Content-Disposition"] = f'attachment; filename="{slugify(estudo.nome) or "estudo"}.csv"'
     exportacao.escrever_csv(resposta, estudo)

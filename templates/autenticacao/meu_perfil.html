@@ -18,7 +18,7 @@
     <div class="mb-3">
         <label class="form-label" for="email-login">Email</label>
         <input class="form-control" id="email-login" type="email" value="{{ user.email }}" disabled>
-        <div class="ajuda-campo">O email é o seu login. Somente um administrador pode alterá-lo, então procure um se precisar trocar.</div>
+        <div class="ajuda-campo">É o seu login. Só um administrador pode alterá-lo.</div>
     </div>
     <div class="mb-3">
         <label class="form-label" for="perfil-atual">Perfil</label>
@@ -27,9 +27,25 @@
     </div>
     <div class="painel-formulario-acoes">
         <button class="painel-acao" type="submit">Salvar alterações</button>
-        <a class="painel-voltar" href="{% url 'trocar_senha' %}">Alterar senha</a>
         <a class="painel-voltar" href="{% url 'inicio' %}">Cancelar</a>
-        {% if not user.is_staff %}<a class="painel-voltar perigo" href="{% url 'excluir_minha_conta' %}">Excluir minha conta</a>{% endif %}
     </div>
 </form>
+
+<section class="painel-formulario perfil-secao" aria-labelledby="titulo-seguranca">
+    <div class="perfil-secao-texto">
+        <h2 class="perfil-secao-titulo" id="titulo-seguranca">Senha</h2>
+        <p class="ajuda-campo">Troque a senha quando quiser. Você precisa informar a senha atual.</p>
+    </div>
+    <a class="painel-acao secundaria" href="{% url 'trocar_senha' %}">Alterar senha</a>
+</section>
+
+{% if not user.is_staff %}
+<section class="painel-formulario perfil-secao perfil-risco" aria-labelledby="titulo-exclusao">
+    <div class="perfil-secao-texto">
+        <h2 class="perfil-secao-titulo" id="titulo-exclusao">Excluir minha conta</h2>
+        <p class="ajuda-campo">Remove a conta e os estudos cadastrados por ela. A tela seguinte mostra o que será eliminado antes da confirmação.</p>
+    </div>
+    <a class="painel-acao secundaria perigo" href="{% url 'excluir_minha_conta' %}">Excluir conta</a>
+</section>
+{% endif %}
 {% endblock %}

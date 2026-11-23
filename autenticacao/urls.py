@@ -5,6 +5,7 @@ from .forms import NovaSenhaForm, SolicitarSenhaForm
 from .views import (
     EntrarView,
     RedefinirSenhaView,
+    aceitar_termos,
     cadastrar,
     cadastro_enviado,
     confirmar_cadastro,
@@ -37,6 +38,7 @@ urlpatterns = [
     path("usuarios/<int:usuario_id>/", editar_usuario, name="editar_usuario"),
     path("usuarios/<int:usuario_id>/excluir/", excluir_usuario, name="excluir_usuario"),
     path("usuarios/<int:usuario_id>/senha/", trocar_senha_usuario, name="trocar_senha_usuario"),
+    path("termos/aceitar/", aceitar_termos, name="aceitar_termos"),
     path("cadastrar/", cadastrar, name="cadastro"),
     path("cadastrar/enviado/", cadastro_enviado, name="cadastro_enviado"),
     path("cadastrar/reenviar/", reenviar_confirmacao, name="reenviar_confirmacao"),

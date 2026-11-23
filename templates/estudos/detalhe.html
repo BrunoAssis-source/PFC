@@ -71,6 +71,7 @@
     <h2 class="painel-secao-titulo">Situação do estudo</h2>
 </div>
 <div class="painel-acoes-grupo">
+    {% if estudo.tem_tcle %}<a class="painel-acao" href="{% url 'estudos:baixar_tcle' estudo.id %}" target="_blank" rel="noopener">Ver TCLE</a>{% endif %}
     {% if estudo.situacao == "rascunho" %}<a class="painel-acao" href="{% url 'estudos:ativar' estudo.id %}">Ativar estudo</a>{% endif %}
     {% if estudo.situacao != "encerrado" %}<a class="painel-acao" href="{% url 'estudos:encerrar' estudo.id %}">Encerrar estudo</a>{% endif %}
     <a class="painel-acao perigo" href="{% url 'estudos:excluir' estudo.id %}">Excluir estudo</a>

@@ -12,13 +12,13 @@ from .conftest import criterio, nova_participacao, novo_estudo, opcoes, variavel
 EXCLUSAO = Criterio.TipoRegra.EXCLUSAO
 
 
-def valor(participacao, codigo, usuario, modelo=ValorColetado, **campos):
+def valor(participacao, codigo, usuario, modelo=ValorColetado, fonte="documento", **campos):
     return modelo.objects.create(
         codigo_voluntario=participacao.voluntario.codigo_hmac,
         variavel=variavel(codigo),
         participacao=participacao,
         coletado_por=usuario,
-        fonte="voluntario",
+        fonte=fonte,
         **campos,
     )
 

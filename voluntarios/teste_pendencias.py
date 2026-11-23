@@ -6,7 +6,7 @@ from django.urls import reverse
 
 from auditoria.models import RegistroAuditoria
 from catalogo.models import Variavel
-from estudos.models import Estudo
+from estudos.models import Estudo, Tcle
 from voluntarios import cpf
 from voluntarios.coleta import proxima_variavel, respostas_pendentes
 from voluntarios.models import Participacao, PendenciaNotificada, ValorColetado, ValorSensivel, Voluntario
@@ -259,6 +259,7 @@ def test_RN29_pendencia_resolvida_e_que_volta_a_surgir_avisa_de_novo(cliente, ba
 
 def rascunho_com_criterios(pesquisadora):
     novo = Estudo.objects.create(nome="Estudo a ativar", condicao="Condição", pesquisador=pesquisadora)
+    Tcle.objects.create(estudo=novo, nome_arquivo="tcle.pdf", conteudo=b"%PDF-1.4")
     criterio(novo, "sexo_ao_nascer", "e", opcoes("sexo_ao_nascer", "feminino"))
     criterio(novo, "renda_familiar_mensal", "menor", valor_numero=3000)
     return novo

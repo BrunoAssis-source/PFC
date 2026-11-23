@@ -219,7 +219,7 @@ def test_voluntario_sem_outro_estudo_tem_os_dados_apagados_ao_ser_recusado(
     codigo = elegivel.codigo_hmac
     sensivel = ValorColetado.objects.filter(codigo_voluntario=codigo).first()
     ValorSensivel.objects.create(
-        codigo_voluntario=codigo, variavel=sensivel.variavel, valor_booleano=True, fonte="voluntario",
+        codigo_voluntario=codigo, variavel=sensivel.variavel, valor_booleano=True, fonte="documento",
         participacao=na_origem(elegivel, origem), coletado_por=profissional,
     )
     decisoes.incluir(estudo, [elegivel.id], pesquisadora)
@@ -432,7 +432,7 @@ def test_tela_mostra_o_motivo_e_o_que_falta_ao_lado_do_candidato(cliente, estudo
     resposta = cliente.get(endereco("candidatos", estudo), {"situacao": ["pendente", "inelegivel"]})
 
     texto = resposta.content.decode()
-    assert "Não atende" in texto and "Falta:" in texto
+    assert "Não atende" in texto and "pendência" in texto
 
 
 def test_contagem_por_situacao_ignora_o_filtro_de_situacao(estudo, elegivel, pendente, inelegivel):

@@ -24,6 +24,7 @@ class Estudo(models.Model):
         related_name="estudos",
         verbose_name="pesquisador",
     )
+    prazo_guarda_ate = models.DateField("guardar os dados até", null=True, blank=True)
     criado_em = models.DateTimeField("criado em", auto_now_add=True)
 
     class Meta:
@@ -44,6 +45,10 @@ class Estudo(models.Model):
             if Estudo.objects.filter(pk=self.pk).exclude(situacao=self.Situacao.RASCUNHO).exists():
                 raise ValidationError("Estudo ativado não volta a ser rascunho, porque os critérios já não podem mudar.")
         super().save(*args, **kwargs)
+
+    @property
+    def tem_tcle(self):
+        return Tcle.objects.filter(estudo=self).exists()
 
     def regras(self):
         """Critérios do estudo separados em inclusão e exclusão, já com o que a frase precisa."""
@@ -76,6 +81,18 @@ class Estudo(models.Model):
             partes.append(f"{exclusao} de exclusão")
         total = inclusao + exclusao
         return f"{total} {'critério' if total == 1 else 'critérios'}: " + " e ".join(partes)
+
+
+class Tcle(models.Model):
+    # Tabela à parte para que listar estudos não carregue o PDF junto com cada linha.
+    estudo = models.OneToOneField(Estudo, on_delete=models.CASCADE, related_name="tcle")
+    nome_arquivo = models.CharField("nome do arquivo", max_length=255)
+    conteudo = models.BinaryField("conteúdo")
+    enviado_em = models.DateTimeField("enviado em", auto_now=True)
+
+    class Meta:
+        verbose_name = "TCLE"
+        verbose_name_plural = "TCLEs"
 
 
 class Criterio(models.Model):

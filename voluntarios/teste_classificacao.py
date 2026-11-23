@@ -294,3 +294,66 @@ def test_tela_diz_que_o_voluntario_atende_a_exclusao(voluntario, participacao, p
     [linha] = classificacao_do_estudo(estudo)["linhas"]
 
     assert linha["motivo"] == f"Atende à exclusão: {regra.descricao}"
+
+
+def test_RF10_CA01_atende_a_dois_criterios_e_sem_valor_para_o_terceiro_e_pendente_com_a_variavel_indicada(
+    voluntario, participacao, profissional, tres_criterios
+):
+    dar(participacao, profissional, "numero_filhos", valor_numero=2)
+    dar(participacao, profissional, "cuidador_de_dependente", valor_booleano=True)
+
+    assert classe(voluntario, tres_criterios) == "pendente"
+    assert [v.codigo for v in variaveis_faltantes(voluntario.id, tres_criterios.id)] == ["sexo_ao_nascer"]
+
+
+def test_RF10_CA02_nao_atende_a_um_criterio_e_inelegivel_mesmo_faltando_outros_valores(
+    voluntario, participacao, profissional, tres_criterios
+):
+    dar(participacao, profissional, "numero_filhos", valor_numero=0)
+
+    assert classe(voluntario, tres_criterios) == "inelegivel"
+
+
+def test_fonte_so_informada_pelo_voluntario_em_outro_estudo_deixa_o_voluntario_pendente(
+    voluntario, participacao, profissional, estudo
+):
+    criterio(estudo, "numero_filhos", "maior_igual", valor_numero=1)
+    dar(participacao, profissional, "numero_filhos", valor_numero=2, fonte="voluntario")
+
+    assert classe(voluntario, estudo) == "pendente"
+    assert [v.codigo for v in variaveis_faltantes(voluntario.id, estudo.id)] == ["numero_filhos"]
+
+
+@pytest.mark.parametrize("fonte", ["documento", "prontuario"])
+def test_fonte_confirmada_vale_em_qualquer_estudo(voluntario, participacao, profissional, estudo, fonte):
+    criterio(estudo, "numero_filhos", "maior_igual", valor_numero=1)
+    dar(participacao, profissional, "numero_filhos", valor_numero=2, fonte=fonte)
+
+    assert classe(voluntario, estudo) == "elegivel"
+
+
+def test_fonte_informada_pelo_voluntario_vale_no_estudo_em_que_foi_coletada(voluntario, profissional, estudo):
+    criterio(estudo, "numero_filhos", "maior_igual", valor_numero=1)
+    daqui = Participacao.objects.create(
+        voluntario=voluntario, estudo=estudo, tcle_versao="1", registrado_por=profissional,
+        situacao=Participacao.Situacao.CONCLUIDA,
+    )
+    dar(daqui, profissional, "numero_filhos", valor_numero=2, fonte="voluntario")
+
+    assert classe(voluntario, estudo) == "elegivel"
+
+
+def test_fonte_nao_confirmada_da_origem_chega_a_idade_derivada(voluntario, participacao, profissional, estudo):
+    criterio(estudo, "idade_anos", "maior_igual", valor_numero=18)
+    dar(participacao, profissional, "data_nascimento", valor_data=nascido_ha(30), fonte="voluntario")
+
+    assert classe(voluntario, estudo) == "pendente"
+    assert [v.codigo for v in variaveis_faltantes(voluntario.id, estudo.id)] == ["data_nascimento"]
+
+
+def test_renda_per_capita_so_vale_com_as_duas_origens_confirmadas(voluntario, participacao, profissional, estudo):
+    criterio(estudo, "renda_per_capita", "menor_igual", valor_numero=1000)
+    dar(participacao, profissional, "renda_familiar_mensal", valor_numero=2000, fonte="documento")
+    dar(participacao, profissional, "pessoas_no_domicilio", valor_numero=4, fonte="voluntario")
+
+    assert classe(voluntario, estudo) == "pendente"

@@ -22,11 +22,11 @@ Situação dos requisitos do documento:
 | RF04 a RF07 (estudos e critérios) | Implementados |
 | RF08 (identificar voluntário) | Implementado, com a conferência do TCLE antes da coleta, que o documento não prevê |
 | RF09 (coleta com verificação eliminatória) | Implementado |
-| RF10 (classificação) | Implementado, com a view SQL e a tela de candidatos do pesquisador. A decisão sobre os candidatos fica no RF12 |
+| RF10 (classificação) | Implementado, com a view SQL e a tela de candidatos do pesquisador. Valor informado só pelo voluntário em outro estudo deixa o par pendente até haver fonte confirmada. A decisão sobre os candidatos fica no RF12 |
 | RF11 (pendências) | Implementado |
 | RF12 (decisão do pesquisador) | Implementado |
-| RF13 (eliminação de dados) | Implementado, sem o prazo por estudo da RN33, que fica como trabalho futuro |
-| RF14 (auditoria completa) | Parcial |
+| RF13 (eliminação de dados) | Implementado, com o prazo de guarda por estudo da RN33 |
+| RF14 (auditoria completa) | Implementado |
 
 A autenticação cobre o cadastro restrito ao domínio `@alunos.umc.br`, login, recuperação de senha por email e a separação entre pesquisador e profissional, com as rotas de cada um negando acesso a quem não tem o perfil.
 
@@ -75,7 +75,7 @@ Variável marcada como sensível (identidade de gênero, orientação sexual, pe
 
 A classificação do RF10 existe no banco como view, `voluntarios_classificacao`, para cada par de voluntário e estudo ativo. Elegível atende a todos os critérios, inelegível deixa de atender a pelo menos um (mesmo faltando outros valores, ou com a coleta encerrada por critério) e pendente não reprova em nenhum, mas falta valor para algum. Ela reaproveita a verificação dos 15 operadores e as derivadas da coleta, e só considera valores dentro da vida útil da variável: o valor vencido conta como ausente. A view `voluntarios_faltantes` lista as variáveis que faltam em cada par, com a derivada trocada pelas origens.
 
-A tela do pesquisador fica em `/estudos/<id>/classificacao/`, com o link "Ver classificação" no detalhe do estudo. Lista os voluntários em quatro blocos: inelegíveis, pendentes, em coleta e elegíveis. Em coleta separa quem está sendo coletado neste estudo de quem é pendente por dados de outro estudo. O inelegível mostra todos os critérios reprovados ("Não atende: ..."), o pendente mostra as variáveis que faltam, e a resposta vencida aparece como "(vencida)", para distinguir de quem nunca respondeu. Quem foi eliminado na coleta não entra, porque já aparece na tela do estudo. Um filtro separa quem tem participação neste estudo de quem veio de outro. A contagem por situação e a página de 25 voluntários saem do banco. A tela mostra a data e a hora do cálculo, porque a classificação não é gravada: é recalculada a cada consulta. Estudo que não está ativo, ou que não tem critérios, mostra um aviso no lugar da lista. A consulta gera o registro de auditoria `estudo_classificacao`. A decisão sobre cada candidato (RF12) ainda não existe.
+A classificação chega ao pesquisador pela tela de candidatos, em `/voluntarios/estudos/<id>/candidatos/`, que lista os voluntários elegíveis e pendentes por código, sem o CPF. Ela não é gravada: é recalculada a cada consulta, e a consulta gera o registro de auditoria `estudo_classificacao`. A decisão de incluir ou recusar fica registrada com autor e data (RF12), e só o voluntário elegível pode ser incluído.
 
 A tela de pendências do profissional lista os voluntários que já têm dados na base e estão pendentes em algum estudo ativo, pelo código curto e só com as variáveis que faltam coletar. Não mostra critério, valor de critério nem classificação. Cada linha tem a conferência do TCLE e o botão Coletar, que abre a mesma coleta em passos pedindo apenas o que falta, com as mesmas regras: sensíveis por último, nada gravado até o fim e a mensagem neutra quando reprova. Concluída a coleta, o voluntário sai da lista. A consulta às pendências e o início da coleta dos faltantes entram na auditoria, sem dados pessoais.
 
@@ -83,15 +83,14 @@ Quando surge uma pendência nova, o profissional que cadastrou o voluntário rec
 
 O app `auditoria` registra login com sucesso e com falha, logout, criação de conta, redefinição de senha, negação de acesso por perfil insuficiente e leitura ou edição de estudo, e também adição, edição e remoção de critério. Cada registro grava usuário, ação, IP e data. A tela fica em `/auditoria/`, aberta a quem tem `is_staff`, do jeito que o Django admin já reconhece como administrador, sem depender do perfil de pesquisador ou profissional. Pelo admin do Django o mesmo registro aparece sem opção de editar nem excluir. O texto do objeto não tem limite de tamanho, porque na edição de critério o registro guarda a frase antes e depois, e uma lista de municípios passa de 150 caracteres. Se a edição não muda a frase, nada é registrado.
 
-A leitura de valor sensível por outra tela, como a do pesquisador, ainda não existe. Quando existir, deve entrar na auditoria como a gravação já entra.
+A exportação do estudo é a única tela do pesquisador que lê valor coletado. Quando algum critério do estudo usa variável sensível, ela grava também o registro `exportacao_sensivel`, só com o nome do estudo e o autor.
 
 ### Trabalho futuro na coleta
 
-- Pendência por vencimento. O aviso por email não dispara quando um valor vence pela vida útil, porque não há tarefa agendada que reavalie as pendências. Hoje a lista de pendências já mostra o valor vencido como faltante, mas o email só sai nos eventos listados acima.
 - Profissional que recebe o aviso. O aviso vai ao profissional que cadastrou o voluntário. O documento não define quem recebe, e vale decidir se deve ir a todos os profissionais.
 
 - Retomada de participação interrompida. A situação `interrompida` existe, mas nenhuma tela a aplica. Hoje a coleta em andamento continua de onde parou enquanto a sessão do profissional vale, e recomeça do primeiro campo se a sessão expira.
-- Fluxo de fonte confirmada. A fonte é gravada em cada resposta, mas nada ainda distingue fonte confirmada de informada pelo voluntário. O estado pendente dos estudos auxiliares depende disso.
+- Fonte confirmada por revisão. Hoje a confirmação vem da própria fonte escolhida na coleta (documento ou prontuário). Não há tela para o profissional confirmar depois um valor que o voluntário informou.
 - Variáveis exigidas além dos critérios. O estudo só pergunta as variáveis que aparecem em critérios.
 
 ### Trabalho futuro na identificação de voluntários
@@ -106,7 +105,7 @@ A leitura de valor sensível por outra tela, como a do pesquisador, ainda não e
 Ficaram de fora, por decisão de escopo, estes itens.
 
 - Motivo da alteração. Em estudo ativo, pedir ao pesquisador a razão da mudança e gravá-la no registro de auditoria.
-- Travamento por triagem iniciada. O critério de um estudo com voluntários já triados não deveria mudar, e alterar passaria a exigir uma nova versão do estudo. Hoje a participação guarda o critério reprovado, mas editar o critério continua livre em estudo ativo.
+- Nova versão do estudo. O critério só pode ser incluído, alterado ou removido enquanto o estudo é rascunho, e o servidor recusa a alteração depois da ativação. Corrigir um critério de estudo ativo passaria a exigir uma nova versão do estudo, que não existe.
 - Histórico e desfazer. A remoção apaga o critério de verdade, e só o registro de auditoria guarda a frase. Manter os critérios removidos ou alterados como versões permitiria consultar o estudo como ele estava em uma data e desfazer uma remoção.
 
 Política de privacidade e termos de uso são páginas próprias, abertas sem login, e o cadastro exige a leitura dos dois antes de criar conta. A política descreve o dado de conta, o CPF cifrado com código HMAC-SHA256, os dados sensíveis em tabela separada e o prazo de retenção ligado ao estudo ativo. A eliminação dos dados ao encerrar o estudo (RF13) está descrita a seguir.
@@ -117,9 +116,18 @@ Antes de apagar as participações, o sistema copia para `RegistroAnonimo` só o
 
 A auditoria registra a ação `eliminacao_encerramento` com o estudo, o autor, a data e as quantidades eliminada e mantida, sem CPF nem código. Os registros anteriores de auditoria guardam o código abreviado do voluntário (oito caracteres). Depois da eliminação esse código não aponta mais para nenhum cadastro, e perde a ligação com qualquer pessoa.
 
-### Trabalho futuro na eliminação
+O estudo pode ter um prazo de guarda (RN33), campo opcional que o pesquisador preenche quando a aprovação ética exige guardar os dados por mais tempo. Se o estudo é encerrado antes da data, a tela de confirmação avisa, o estudo passa a encerrado e a eliminação espera. A auditoria registra `eliminacao_adiada` com a data. Enquanto o prazo está em curso, o estudo encerrado segura o voluntário do mesmo jeito que um estudo ativo, e a rotina `eliminar_vencidos` apaga os dados quando a data chega, com a mesma regra do encerramento e sem usuário no registro. Depois do encerramento o prazo não muda, para não deixar dado guardado sem rotina que o elimine. Excluir o estudo continua eliminando na hora.
 
-- Prazo por estudo (RN33). A aprovação ética de um estudo pode exigir prazo de guarda diferente da regra geral. Seria um campo de prazo no estudo e uma rotina agendada que adia a eliminação até a data, em vez de rodar no encerramento.
+### Valor informado pelo voluntário
+
+A fonte de cada valor (voluntário, documento ou prontuário) decide se ele vale em outro estudo. Documento e prontuário valem em qualquer estudo. O valor só informado pelo voluntário vale no estudo em que foi coletado, onde a verificação é eliminatória, e conta como ausente nos demais, o que deixa o voluntário pendente. As views `voluntarios_avaliacao_par` e `voluntarios_faltantes` aplicam a regra. Idade e faixa etária herdam a fonte da data de nascimento, e a renda per capita só vale pelo estudo de origem quando as duas variáveis de que depende vêm da mesma participação. Reaplicar a coleta com fonte confirmada tira o voluntário da lista de pendências.
+
+### Rotinas agendadas
+
+Dois comandos rodam por agendamento, uma vez por dia no Render.
+
+- `python manage.py avisar_pendencias` reavalia as pendências e envia o aviso das novas, inclusive as que surgem quando um valor vence pela vida útil, evento que nenhuma tela dispara.
+- `python manage.py eliminar_vencidos` elimina os dados dos estudos encerrados cujo prazo de guarda terminou.
 
 ## Stack
 
@@ -128,6 +136,12 @@ Django 5.2 no padrão MVT, PostgreSQL, Bootstrap 5 e pytest. Aplicação monolí
 O envio de email usa a API transacional do Brevo, com requisição HTTP direta em um backend de email do Django.
 
 Em produção: Render para a aplicação e Neon para o banco.
+
+## Implantação
+
+O `render.yaml` descreve o serviço web e a rotina diária. O `build.sh` instala as dependências, coleta os arquivos estáticos e aplica as migrations. Nenhuma chave vai no arquivo: todas ficam com `sync: false` e são preenchidas no painel do Render, as mesmas variáveis da seção a seguir, com `DJANGO_DEBUG=0` e `DB_SSLMODE=require` para o Neon. O serviço agendado não herda as variáveis do serviço web, então elas precisam ser copiadas nele.
+
+Com `DJANGO_DEBUG=0` a aplicação redireciona HTTP para HTTPS, envia HSTS por um ano e marca os cookies como seguros. O redirecionamento depende do cabeçalho `X-Forwarded-Proto` que o Render adiciona. O `manage.py check --deploy` aponta apenas o HSTS sem subdomínios e sem preload, que ficam desligados de propósito, porque o domínio do Render é compartilhado.
 
 ## Como executar
 
@@ -212,9 +226,9 @@ static/css/      folha de estilo sobre o Bootstrap
 static/js/       interação das telas de critérios e de coleta, e a cascata de estado e município
 ```
 
-O modelo de usuário é próprio, com email como identificador e nome completo obrigatório. O cadastro é aberto a quem tem email `@alunos.umc.br` e a pessoa escolhe o próprio perfil no formulário. A conta feita pelo próprio visitante nasce inativa e só passa a valer quando ele confirma o email, pelo link ou pelo código de 8 caracteres que a mensagem traz. O código vale 30 minutos e o link 3 dias. Cada envio gera os dois de novo e cancela os anteriores. A tabela `ConfirmacaoEmail` guarda só o hash de cada um, com o horário do envio e as contagens do limitador: 60 segundos entre pedidos, no máximo 5 envios por hora e 5 tentativas erradas por código, depois das quais é preciso pedir outro. O Brevo reescreve os links do email para medir cliques e não há opção por mensagem para desligar isso, por isso o código existe como segundo caminho. Quem tenta entrar antes de confirmar recebe o aviso e pode pedir o envio de novo na tela de login. Contas criadas pelo administrador ficam ativas na hora. O administrador pode corrigir o perfil de qualquer conta pelo admin ou pela tela de usuários.
+O modelo de usuário é próprio, com email como identificador e nome completo obrigatório. O cadastro é aberto a quem tem email `@alunos.umc.br` e a pessoa escolhe o próprio perfil no formulário. O aceite dos termos de uso e da política de privacidade fica gravado no usuário (`termos_aceitos_em` e `termos_versao`). A versão é a constante `TERMOS_VERSAO` em `autenticacao/models.py`, que deve mudar quando o texto dos termos mudar. Quem entra sem o aceite da versão atual, como a conta criada pelo administrador, a conta anterior ao registro do aceite e quem aceitou uma versão antiga, é levado a `/termos/aceitar/` em qualquer rota (middleware `autenticacao/middleware.py`) e só segue depois de aceitar. Ficam livres a própria tela de aceite, a saída e os dois textos. O aceite também entra na auditoria. A exigência pode ser desligada só pelos testes, pela configuração `EXIGE_ACEITE_DOS_TERMOS`, que não tem variável de ambiente. A conta feita pelo próprio visitante nasce inativa e só passa a valer quando ele confirma o email, pelo link ou pelo código de 8 caracteres que a mensagem traz. O código vale 30 minutos e o link 3 dias. Cada envio gera os dois de novo e cancela os anteriores. A tabela `ConfirmacaoEmail` guarda só o hash de cada um, com o horário do envio e as contagens do limitador: 60 segundos entre pedidos, no máximo 5 envios por hora e 5 tentativas erradas por código, depois das quais é preciso pedir outro. O Brevo reescreve os links do email para medir cliques e não há opção por mensagem para desligar isso, por isso o código existe como segundo caminho. Quem tenta entrar antes de confirmar recebe o aviso e pode pedir o envio de novo na tela de login. Contas criadas pelo administrador ficam ativas na hora. O administrador pode corrigir o perfil de qualquer conta pelo admin ou pela tela de usuários.
 
-Cada conta tem um perfil, pesquisador ou profissional, e ele decide o que a pessoa alcança. O profissional chega à identificação de voluntários, ao registro de dados e à relação de pendências. O pesquisador chega aos estudos e aos critérios de cada um. Quem não tem o perfil recebe 403, mesmo digitando a URL direto, porque a verificação está no decorador `exige_perfil`, em `autenticacao/permissoes.py`, aplicado na view.
+Cada conta tem um perfil, pesquisador ou profissional, e ele decide o que a pessoa alcança. O profissional chega à identificação de voluntários, ao registro de dados e à relação de pendências. O pesquisador chega aos estudos e aos critérios de cada um. Quem não tem o perfil recebe 403, mesmo digitando a URL direto, porque a verificação está no decorador `exige_perfil`, em `autenticacao/permissoes.py`, aplicado na view. O administrador (`is_staff`) também recebe 403 nas telas de estudo, coleta, voluntários e pendências: ele só gerencia contas e consulta a auditoria, e o menu dele mostra apenas Início, Auditoria e Usuários. O admin do Django também não oferece o cadastro de estudo, que nasce só pela tela do pesquisador.
 
 Entre pesquisadores, cada um enxerga apenas os próprios estudos. O estudo de outra pessoa responde 404, para não confirmar que ele existe.
 
@@ -236,4 +250,4 @@ Cada critério de aceite de RF01 a RF09 tem um teste com o código no nome, por 
 
 Os casos da RN26 estão em `voluntarios/teste_classificacao.py`, incluindo a exclusão sem valor, que deixa o voluntário pendente.
 
-Ainda sem testes: cadastro, login, confirmação de email, gestão de usuários e as telas de lista e edição de estudo. A avaliação de um participante contra os critérios depende do cadastro de voluntários, que não existe.
+Cada critério de aceite de RF10 e RF14 também tem teste com o código no nome (`voluntarios/teste_classificacao.py` e `auditoria/teste_auditoria.py`). Há testes próprios para a fonte confirmada, o prazo de guarda (`voluntarios/teste_prazo_guarda.py`) e os dois comandos agendados (`voluntarios/teste_rotinas.py`).

@@ -9,6 +9,10 @@ class EstudoAdmin(admin.ModelAdmin):
     list_filter = ("situacao",)
     search_fields = ("nome", "condicao")
 
+    def has_add_permission(self, request):
+        # Estudo nasce pela tela do pesquisador, que o vincula a ele e o deixa em rascunho.
+        return False
+
     def get_readonly_fields(self, request, obj=None):
         # Mudar a situação por aqui pularia a confirmação e a eliminação de dados do encerramento.
         return ("situacao",) if obj else ()

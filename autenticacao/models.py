@@ -1,6 +1,10 @@
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
 
+# Troque ao alterar o texto dos termos de uso ou da política de privacidade. Quem aceitou uma versão anterior fica
+# com a versão antiga registrada.
+TERMOS_VERSAO = "1"
+
 
 class UsuarioManager(BaseUserManager):
     def create_user(self, email, nome_completo, password=None, **extra_fields):
@@ -33,6 +37,9 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     perfil = models.CharField("perfil", max_length=12, choices=Perfil.choices, default=Perfil.PROFISSIONAL)
     is_active = models.BooleanField("ativo", default=True)
     is_staff = models.BooleanField("equipe", default=False)
+    # Preenchidos no cadastro feito pela própria pessoa. Conta criada pelo administrador fica sem aceite registrado.
+    termos_aceitos_em = models.DateTimeField("termos aceitos em", null=True, blank=True)
+    termos_versao = models.CharField("versão dos termos aceita", max_length=12, blank=True)
 
     objects = UsuarioManager()
 

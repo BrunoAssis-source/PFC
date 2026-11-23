@@ -71,6 +71,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "autenticacao.middleware.ExigeAceiteDosTermos",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -107,6 +108,10 @@ DATABASES = {
     }
 }
 
+# No banco, e não na memória, porque o gunicorn tem vários processos e cada um contaria as tentativas de login à parte.
+# A tabela nasce com "manage.py createcachetable" (build.sh); os testes a criam sozinhos.
+CACHES = {"default": {"BACKEND": "django.core.cache.backends.db.DatabaseCache", "LOCATION": "cache_limite"}}
+
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
@@ -129,12 +134,18 @@ if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+    SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 
 # A sessão expira por inatividade; cada requisição renova o prazo, para não
 # derrubar quem está no meio de uma coleta.
 SESSION_COOKIE_AGE = 30 * 60
 SESSION_SAVE_EVERY_REQUEST = True
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+
+# Desligado só pelos testes, que criam usuários sem passar pelo cadastro. Não há variável de ambiente para isso.
+EXIGE_ACEITE_DOS_TERMOS = True
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
